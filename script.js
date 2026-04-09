@@ -147,8 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Fetching leaderboard data...');
             // Try local API first, then fallback to mock data
-            // Replace YOUR_WISPBYTE_URL with your actual Wispbyte server URL
-            const response = await fetch('https://YOUR_WISPBYTE_URL/api/leaderboard');
+            // Wispbyte API URL - replace with your actual server URL if different
+            const response = await fetch('https://03488f7d.wispbyte.com/api/leaderboard');
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
