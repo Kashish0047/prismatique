@@ -209,7 +209,7 @@ class VisualDesigner {
         this.selectedElement.style.top = finalY + 'px';
     }
 
-    handleMouseUp(e) => {
+    handleMouseUp(e) {
         if (this.isDragging && this.selectedElement) {
             this.isDragging = false;
             this.selectedElement.classList.remove('dragging');
