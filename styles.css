@@ -20,8 +20,8 @@
 body {
     font-family: 'Arial', sans-serif;
     line-height: 1.6;
-    color: var(--primary-black);
-    background-color: var(--text-light);
+    color: var(--text-light);
+    background-color: var(--dark-gray);
     padding-top: 120px; /* Account for welcome banner + navbar */
 }
 
