@@ -147,11 +147,28 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log('Fetching leaderboard data...');
             // Try local API first, then fallback to mock data
-            // Try different Wispbyte URL patterns - uncomment the correct one
-            // const response = await fetch('https://server-03488f7d.wispbyte.com/api/leaderboard');
-            // const response = await fetch('https://app-03488f7d.wispbyte.com/api/leaderboard');
-            const response = await fetch('https://api-03488f7d.wispbyte.com/api/leaderboard');
-            // Replace with your actual Wispbyte URL above
+            // Try multiple URL patterns with fallback
+            let response;
+            try {
+                // Try Wispbyte patterns first
+                response = await fetch('https://03488f7d.wispbyte.com/api/leaderboard');
+            } catch (e1) {
+                try {
+                    response = await fetch('https://server-03488f7d.wispbyte.com/api/leaderboard');
+                } catch (e2) {
+                    try {
+                        response = await fetch('https://app-03488f7d.wispbyte.com/api/leaderboard');
+                    } catch (e3) {
+                        try {
+                            response = await fetch('https://api-03488f7d.wispbyte.com/api/leaderboard');
+                        } catch (e4) {
+                            // Final fallback to localhost for testing
+                            console.log('All Wispbyte URLs failed, trying localhost...');
+                            response = await fetch('http://localhost:3001/api/leaderboard');
+                        }
+                    }
+                }
+            }
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
