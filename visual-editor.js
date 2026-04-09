@@ -458,33 +458,54 @@ class VisualDesigner {
         const designData = this.exportDesign();
         const previewHTML = this.generatePreviewHTML(designData);
         
-        const preview = window.open('', 'preview', 'width=1000,height=700');
-        preview.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body { 
-                        margin: 0; 
-                        padding: 2rem; 
-                        background: #1a1a1a; 
-                        font-family: Arial; 
-                    }
-                    .preview-element { 
-                        position: absolute; 
-                        padding: 1rem; 
-                        border-radius: 8px; 
-                        background: var(--dark-gray); 
-                        border: 2px solid var(--accent-blue);
-                    }
-                </style>
-            </head>
-            <body>
-                ${previewHTML}
-            </body>
-            </html>
-        `);
-        preview.document.close();
+        // Create a modal preview instead of popup to avoid cross-origin issues
+        const modal = document.createElement('div');
+        modal.className = 'preview-modal';
+        modal.innerHTML = `
+            <div class="preview-overlay">
+                <div class="preview-container">
+                    <div class="preview-header">
+                        <h3>Design Preview</h3>
+                        <button class="preview-close">&times;</button>
+                    </div>
+                    <div class="preview-content">
+                        <style>
+                            .preview-content { 
+                                position: relative; 
+                                height: 500px; 
+                                background: #1a1a1a; 
+                                font-family: Arial; 
+                                overflow: auto;
+                            }
+                            .preview-element { 
+                                position: absolute; 
+                                padding: 1rem; 
+                                border-radius: 8px; 
+                                background: #2a2a2a; 
+                                border: 2px solid var(--accent-blue);
+                            }
+                        </style>
+                        ${previewHTML}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close functionality
+        const closeBtn = modal.querySelector('.preview-close');
+        const overlay = modal.querySelector('.preview-overlay');
+        
+        closeBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(modal);
+            }
+        });
     }
 
     exportDesign() {
