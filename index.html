@@ -12,17 +12,27 @@
         <nav class="nav-container">
             <img src="pris.png" alt="Prismatique" class="nav-logo-float" style="display: block;">
             <div class="nav-logo">
-                <h1>Prismatique</h1>
+                <h1></h1>
             </div>
             <ul class="nav-menu">
                 <li class="nav-item">
                     <a href="#home" class="nav-link">Home</a>
                 </li>
-                <li class="nav-item">
-                    <a href="#leaderboard" class="nav-link">Leaderboard</a>
+                <li class="nav-item dropdown">
+                    <a href="#rewards" class="nav-link dropdown-toggle">Rewards</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#leaderboards" class="dropdown-link">Leaderboards</a></li>
+                        <li><a href="#wager-rewards" class="dropdown-link">Wager Rewards</a></li>
+                    </ul>
                 </li>
                 <li class="nav-item">
                     <a href="#bonuses" class="nav-link">Bonuses</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#raffles" class="nav-link">Raffles</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#giveaways" class="nav-link">Giveaways</a>
                 </li>
                 <li class="nav-item">
                     <a href="#faq" class="nav-link">FAQ</a>
@@ -38,6 +48,10 @@
 
     <main>
         <section id="home" class="hero">
+            <video autoplay muted loop id="hero-video">
+                <source src="BG.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
             <div class="hero-content">
                 <h1>The <span class="highlight-blue">Bonuses</span></h1>
                 <p>Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.</p>
@@ -195,6 +209,152 @@
                                 <i class="fas fa-arrow-right"></i>
                             </a>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="raffles" class="raffles-section">
+            <div class="container">
+                <h2 class="section-title">Exclusive Raffles</h2>
+                <div class="raffles-grid">
+                    <div class="raffle-card">
+                        <div class="raffle-header">
+                            <h3>Weekly Grand Prize</h3>
+                            <div class="prize-amount">$10,000</div>
+                        </div>
+                        <div class="raffle-details">
+                            <div class="raffle-info">
+                                <i class="fas fa-ticket-alt"></i>
+                                <span>Tickets: 1 per $100 wagered</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-users"></i>
+                                <span>1,247 participants</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-clock"></i>
+                                <span>Draw in 3 days</span>
+                            </div>
+                        </div>
+                        <button class="cta-button">Enter Raffle</button>
+                    </div>
+                    
+                    <div class="raffle-card">
+                        <div class="raffle-header">
+                            <h3>Daily Cash Prize</h3>
+                            <div class="prize-amount">$1,000</div>
+                        </div>
+                        <div class="raffle-details">
+                            <div class="raffle-info">
+                                <i class="fas fa-ticket-alt"></i>
+                                <span>Tickets: 1 per $50 wagered</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-users"></i>
+                                <span>523 participants</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-clock"></i>
+                                <span>Draw in 12 hours</span>
+                            </div>
+                        </div>
+                        <button class="cta-button">Enter Raffle</button>
+                    </div>
+                    
+                    <div class="raffle-card">
+                        <div class="raffle-header">
+                            <h3>VIP Exclusive</h3>
+                            <div class="prize-amount">$25,000</div>
+                        </div>
+                        <div class="raffle-details">
+                            <div class="raffle-info">
+                                <i class="fas fa-ticket-alt"></i>
+                                <span>Tickets: VIP members only</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-users"></i>
+                                <span>89 participants</span>
+                            </div>
+                            <div class="raffle-info">
+                                <i class="fas fa-clock"></i>
+                                <span>Draw in 7 days</span>
+                            </div>
+                        </div>
+                        <button class="cta-button">Enter Raffle</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="giveaways" class="giveaways-section">
+            <div class="container">
+                <h2 class="section-title">Free Giveaways</h2>
+                <div class="giveaways-grid">
+                    <div class="giveaway-card">
+                        <div class="giveaway-header">
+                            <h3>Daily Free Spins</h3>
+                            <div class="giveaway-badge">FREE</div>
+                        </div>
+                        <div class="giveaway-content">
+                            <div class="giveaway-prize">
+                                <i class="fas fa-coins"></i>
+                                <span>100 Free Spins</span>
+                            </div>
+                            <div class="giveaway-requirements">
+                                <p>Just log in daily to claim!</p>
+                                <div class="requirement-list">
+                                    <span><i class="fas fa-check"></i> No deposit required</span>
+                                    <span><i class="fas fa-check"></i> Available to all users</span>
+                                    <span><i class="fas fa-check"></i> 24-hour expiry</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="cta-button">Claim Now</button>
+                    </div>
+                    
+                    <div class="giveaway-card">
+                        <div class="giveaway-header">
+                            <h3>Weekly Bonus Cash</h3>
+                            <div class="giveaway-badge">FREE</div>
+                        </div>
+                        <div class="giveaway-content">
+                            <div class="giveaway-prize">
+                                <i class="fas fa-dollar-sign"></i>
+                                <span>$50 Bonus Cash</span>
+                            </div>
+                            <div class="giveaway-requirements">
+                                <p>Complete weekly challenges!</p>
+                                <div class="requirement-list">
+                                    <span><i class="fas fa-check"></i> 5x wagering requirement</span>
+                                    <span><i class="fas fa-check"></i> Valid for 7 days</span>
+                                    <span><i class="fas fa-check"></i> All games eligible</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="cta-button">Claim Now</button>
+                    </div>
+                    
+                    <div class="giveaway-card">
+                        <div class="giveaway-header">
+                            <h3>Monthly Mystery Box</h3>
+                            <div class="giveaway-badge">SURPRISE</div>
+                        </div>
+                        <div class="giveaway-content">
+                            <div class="giveaway-prize">
+                                <i class="fas fa-gift"></i>
+                                <span>Mystery Prize</span>
+                            </div>
+                            <div class="giveaway-requirements">
+                                <p>Win up to $500 in prizes!</p>
+                                <div class="requirement-list">
+                                    <span><i class="fas fa-check"></i> Random prizes</span>
+                                    <span><i class="fas fa-check"></i> Guaranteed win</span>
+                                    <span><i class="fas fa-check"></i> One per month</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="cta-button">Open Box</button>
                     </div>
                 </div>
             </div>

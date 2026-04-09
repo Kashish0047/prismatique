@@ -1,0 +1,462 @@
+/* Visual Designer Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+    color: #fff;
+    overflow: hidden;
+}
+
+/* Designer Header */
+.designer-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.designer-header {
+    background: linear-gradient(135deg, var(--primary-black), var(--dark-gray));
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--accent-blue);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.designer-logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.designer-tools {
+    display: flex;
+    gap: 1rem;
+}
+
+.tool-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.tool-btn {
+    background: var(--dark-gray);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 50px;
+    height: 50px;
+}
+
+.tool-btn:hover {
+    background: rgba(0, 102, 204, 0.2);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.tool-btn.active {
+    background: var(--accent-blue);
+    border-color: var(--bright-blue);
+    color: white;
+}
+
+.designer-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Designer Main */
+.designer-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Properties Panel */
+.properties-panel {
+    width: 300px;
+    background: var(--dark-gray);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.properties-panel h3 {
+    color: var(--accent-blue);
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
+}
+
+.property-group {
+    margin-bottom: 1.5rem;
+}
+
+.property-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.property-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 0.75rem;
+    color: #fff;
+    font-size: 0.9rem;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.property-slider {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    outline: none;
+}
+
+.property-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.property-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+.property-color {
+    width: 100%;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+.property-value {
+    color: var(--accent-blue);
+    font-weight: bold;
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.elements-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Design Canvas */
+.designer-canvas {
+    flex: 1;
+    background: #1a1a1a;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas-toolbar {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    z-index: 100;
+}
+
+.toolbar-btn {
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-btn:hover {
+    background: rgba(0, 102, 204, 0.3);
+    color: var(--accent-blue);
+}
+
+.design-canvas {
+    width: 100%;
+    height: calc(100vh - 200px);
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(0, 102, 204, 0.1) 1px, transparent 1px),
+        linear-gradient(45deg, transparent 49%, rgba(255, 255, 255, 0.05) 50%, transparent 51%),
+        linear-gradient(-45deg, transparent 49%, rgba(255, 255, 255, 0.05) 50%, transparent 51%);
+    background-size: 20px 20px, 10px 10px;
+    position: relative;
+}
+
+/* Draggable Elements */
+.design-element {
+    position: absolute;
+    cursor: move;
+    user-select: none;
+    transition: box-shadow 0.3s ease;
+    padding: 1rem;
+    border-radius: 8px;
+    background: var(--dark-gray);
+    border: 2px solid var(--accent-blue);
+    color: #fff;
+    min-width: 100px;
+}
+
+.design-element:hover {
+    box-shadow: 0 5px 20px rgba(0, 102, 204, 0.4);
+    transform: scale(1.05);
+}
+
+.design-element.selected {
+    border-color: var(--bright-blue);
+    box-shadow: 0 0 0 5px rgba(0, 102, 204, 0.6);
+}
+
+.design-element.dragging {
+    opacity: 0.7;
+    cursor: grabbing;
+}
+
+.text-element {
+    background: transparent;
+    border: none;
+    min-width: 150px;
+}
+
+.button-element {
+    background: linear-gradient(135deg, var(--accent-blue), var(--bright-blue));
+    border: none;
+    border-radius: 25px;
+    padding: 1rem 2rem;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.button-element:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 102, 204, 0.4);
+}
+
+.image-element {
+    max-width: 300px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.image-element img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.shape-element {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border-radius: 50%;
+}
+
+.shape-element.circle {
+    border-radius: 50%;
+    width: 100px;
+    height: 100px;
+}
+
+.shape-element.square {
+    border-radius: 8px;
+    width: 100px;
+    height: 100px;
+}
+
+.shape-element.triangle {
+    width: 0;
+    height: 0;
+    border-left: 50px solid transparent;
+    border-right: 50px solid transparent;
+    border-bottom: 86px solid var(--accent-blue);
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    background: var(--dark-gray);
+    border: 1px solid var(--accent-blue);
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 200px;
+    padding: 0.5rem 0;
+}
+
+.context-menu.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8);
+}
+
+.context-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.context-item:hover {
+    background: rgba(0, 102, 204, 0.2);
+    color: var(--accent-blue);
+}
+
+.context-item i {
+    width: 16px;
+    text-align: center;
+}
+
+/* Grid Overlay */
+.grid-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(0, 102, 204, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, transparent 49%, rgba(0, 102, 204, 0.1) 50%, transparent 51%);
+    background-size: 50px 50px, 1px 1px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.grid-overlay.active {
+    background-image: 
+        linear-gradient(rgba(0, 102, 204, 0.2) 1px, transparent 1px),
+        linear-gradient(90deg, transparent 49%, rgba(0, 102, 204, 0.2) 50%, transparent 51%);
+}
+
+/* Snap Lines */
+.snap-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.snap-line {
+    position: absolute;
+    background: var(--bright-blue);
+    opacity: 0.5;
+}
+
+.snap-line.horizontal {
+    height: 1px;
+    width: 100%;
+    top: 50%;
+}
+
+.snap-line.vertical {
+    width: 1px;
+    height: 100%;
+    left: 50%;
+}
+
+.snap-line.center {
+    top: 50%;
+    left: 50%;
+}
+
+/* Status Messages */
+.status-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.status-message.hidden {
+    opacity: 0;
+    transform: translateX(100%);
+}
+
+.status-message i {
+    font-size: 1.2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .designer-main {
+        flex-direction: column;
+    }
+    
+    .properties-panel {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .canvas-toolbar {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .design-canvas {
+        height: calc(100vh - 250px);
+    }
+    
+    .design-element {
+        min-width: 80px;
+        font-size: 0.8rem;
+    }
+}

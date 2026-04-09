@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prismatique Easy Editor</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <div class="admin-logo">
+                <img src="pris.png" alt="Prismatique" class="admin-logo-img">
+                <h1>Easy Editor</h1>
+            </div>
+            <div class="admin-user">
+                <span id="admin-status">Owner</span>
+                <button id="logout-btn" class="admin-btn">Logout</button>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <aside class="admin-sidebar">
+                <nav class="admin-nav">
+                    <ul>
+                        <li><a href="#home" class="admin-nav-link active" data-section="home">
+                            <i class="fas fa-home"></i> Home Text
+                        </a></li>
+                        <li><a href="#bonuses" class="admin-nav-link" data-section="bonuses">
+                            <i class="fas fa-gift"></i> Bonuses
+                        </a></li>
+                        <li><a href="#raffles" class="admin-nav-link" data-section="raffles">
+                            <i class="fas fa-ticket-alt"></i> Raffles
+                        </a></li>
+                        <li><a href="#giveaways" class="admin-nav-link" data-section="giveaways">
+                            <i class="fas fa-donate"></i> Giveaways
+                        </a></li>
+                        <li><a href="#faq" class="admin-nav-link" data-section="faq">
+                            <i class="fas fa-question"></i> FAQ
+                        </a></li>
+                        <li><a href="#leaderboard" class="admin-nav-link" data-section="leaderboard">
+                            <i class="fas fa-trophy"></i> Leaderboard
+                        </a></li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <section class="admin-content">
+                <!-- Home Text Editor -->
+                <div id="home" class="admin-section active">
+                    <div class="section-header">
+                        <h2>Edit Home Text</h2>
+                        <div class="editor-actions">
+                            <button id="save-home" class="admin-btn primary">
+                                <i class="fas fa-save"></i> Save & Deploy
+                            </button>
+                            <button id="preview-home" class="admin-btn secondary">
+                                <i class="fas fa-eye"></i> Preview
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="text-editor-container">
+                        <div class="text-item">
+                            <label>Main Title (The Bonuses)</label>
+                            <div class="editable-text" contenteditable="true" id="main-title">
+                                The Bonuses
+                            </div>
+                        </div>
+                        
+                        <div class="text-item">
+                            <label>Subtitle Text</label>
+                            <div class="editable-text" contenteditable="true" id="subtitle-text">
+                                Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
+                            </div>
+                        </div>
+                        
+                        <div class="text-item">
+                            <label>Feature 1 - Verified</label>
+                            <div class="editable-text" contenteditable="true" id="feature1-text">
+                                100% Verified
+                            </div>
+                        </div>
+                        
+                        <div class="text-item">
+                            <label>Feature 2 - Payouts</label>
+                            <div class="editable-text" contenteditable="true" id="feature2-text">
+                                Fast Payouts
+                            </div>
+                        </div>
+                        
+                        <div class="text-item">
+                            <label>Feature 3 - Players</label>
+                            <div class="editable-text" contenteditable="true" id="feature3-text">
+                                10k+ Players
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bonuses Section -->
+                <div id="bonuses" class="admin-section">
+                    <div class="section-header">
+                        <h2>Edit Bonuses</h2>
+                        <div class="editor-actions">
+                            <button id="save-bonuses" class="admin-btn primary">
+                                <i class="fas fa-save"></i> Save & Deploy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bonuses-grid" id="bonuses-list">
+                        <!-- Bonuses will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Raffles Section -->
+                <div id="raffles" class="admin-section">
+                    <div class="section-header">
+                        <h2>Edit Raffles</h2>
+                        <div class="editor-actions">
+                            <button id="save-raffles" class="admin-btn primary">
+                                <i class="fas fa-save"></i> Save & Deploy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="raffles-grid" id="raffles-list">
+                        <!-- Raffles will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Giveaways Section -->
+                <div id="giveaways" class="admin-section">
+                    <div class="section-header">
+                        <h2>Edit Giveaways</h2>
+                        <div class="editor-actions">
+                            <button id="save-giveaways" class="admin-btn primary">
+                                <i class="fas fa-save"></i> Save & Deploy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="giveaways-grid" id="giveaways-list">
+                        <!-- Giveaways will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- FAQ Section -->
+                <div id="faq" class="admin-section">
+                    <div class="section-header">
+                        <h2>Edit FAQ</h2>
+                        <div class="editor-actions">
+                            <button id="save-faq" class="admin-btn primary">
+                                <i class="fas fa-save"></i> Save & Deploy
+                            </button>
+                        </div>
+                    </div>
+                    <div class="faq-editor" id="faq-list">
+                        <!-- FAQ items will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Leaderboard Section -->
+                <div id="leaderboard" class="admin-section">
+                    <div class="section-header">
+                        <h2>Leaderboard Settings</h2>
+                        <div class="editor-actions">
+                            <button id="reset-leaderboard" class="admin-btn warning">
+                                <i class="fas fa-sync"></i> Reset Leaderboard
+                            </button>
+                        </div>
+                    </div>
+                    <div class="leaderboard-table">
+                        <p>Leaderboard automatically updates based on player activity.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-message" class="status-message hidden">
+            <i class="fas fa-check-circle"></i>
+            <span id="status-text">Changes saved and deployed!</span>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

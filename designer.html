@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prismatique Designer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="visual-editor.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="designer-container">
+        <header class="designer-header">
+            <div class="designer-logo">
+                <img src="pris.png" alt="Prismatique" class="admin-logo-img">
+                <h1>Visual Designer</h1>
+            </div>
+            <div class="designer-actions">
+                <button id="save-design" class="admin-btn primary">
+                    <i class="fas fa-save"></i> Save & Deploy
+                </button>
+                <button id="preview-design" class="admin-btn secondary">
+                    <i class="fas fa-eye"></i> Preview
+                </button>
+                <button id="clear-canvas" class="admin-btn warning">
+                    <i class="fas fa-eraser"></i> Clear All
+                </button>
+            </div>
+        </header>
+
+        <main class="designer-main">
+            <aside class="properties-panel">
+                <h3>Properties</h3>
+                <div class="property-group">
+                    <label>Text Content</label>
+                    <textarea id="property-text" class="property-input" placeholder="Enter text..."></textarea>
+                </div>
+                <div class="property-group">
+                    <label>Font Size</label>
+                    <input type="range" id="property-fontsize" class="property-slider" min="12" max="72" value="24">
+                    <span class="property-value">24px</span>
+                </div>
+                <div class="property-group">
+                    <label>Font Color</label>
+                    <input type="color" id="property-color" class="property-color" value="#ffffff">
+                </div>
+                <div class="property-group">
+                    <label>Background</label>
+                    <input type="color" id="property-bgcolor" class="property-color" value="#0066cc">
+                </div>
+                <div class="property-group">
+                    <label>Border Radius</label>
+                    <input type="range" id="property-radius" class="property-slider" min="0" max="50" value="8">
+                    <span class="property-value">8px</span>
+                </div>
+                <div class="property-group">
+                    <label>Opacity</label>
+                    <input type="range" id="property-opacity" class="property-slider" min="0" max="100" value="100">
+                    <span class="property-value">100%</span>
+                </div>
+                <div class="property-group">
+                    <label>Shadow</label>
+                    <input type="range" id="property-shadow" class="property-slider" min="0" max="20" value="5">
+                    <span class="property-value">5px</span>
+                </div>
+            </div>
+
+            <h3>Elements</h3>
+                <div id="elements-list" class="elements-list">
+                    <!-- Elements will be added here dynamically -->
+                </div>
+            </aside>
+
+            <section class="designer-canvas">
+                <div class="canvas-toolbar">
+                    <button class="toolbar-btn" data-action="zoom-in" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="toolbar-btn" data-action="zoom-out" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="toolbar-btn" data-action="grid-toggle" title="Toggle Grid">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="toolbar-btn" data-action="snap-toggle" title="Toggle Snap">
+                        <i class="fas fa-magnet"></i>
+                    </button>
+                </div>
+                <div id="design-canvas" class="design-canvas">
+                    <!-- Background elements will be added here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-message" class="status-message hidden">
+            <i class="fas fa-check-circle"></i>
+            <span id="status-text">Design saved and deployed!</span>
+        </div>
+    </div>
+
+    <script src="visual-editor.js"></script>
+</body>
+</html>
