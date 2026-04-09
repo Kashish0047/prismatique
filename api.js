@@ -2,7 +2,7 @@ const express = require('express');
 const https = require('https');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Enable CORS for all routes including file://
 app.use((req, res, next) => {
