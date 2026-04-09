@@ -146,7 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
     async function fetchLeaderboardData() {
         try {
             console.log('Fetching leaderboard data...');
-            const response = await fetch('https://prismatique-api.onrender.com/api/leaderboard');
+            // Try local API first, then fallback to mock data
+            const response = await fetch('http://localhost:3001/api/leaderboard');
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
