@@ -240,6 +240,35 @@ body {
     color: var(--accent-blue);
 }
 
+/* Section Video Backgrounds */
+.section-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: -2;
+}
+
+.steps-section::after,
+.bonus-section::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: -1;
+}
+
+.steps-section,
+.bonus-section {
+    position: relative;
+    overflow: hidden;
+}
+
 /* Hero Section */
 .hero {
     position: relative;
