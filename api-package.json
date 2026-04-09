@@ -1,0 +1,19 @@
+{
+  "name": "prismatique-api",
+  "version": "1.0.0",
+  "description": "Prismatique API for leaderboard data",
+  "main": "api.js",
+  "scripts": {
+    "start": "node api.js",
+    "install": "npm install"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["api", "leaderboard", "prismatique"],
+  "author": "Prismatique",
+  "license": "MIT"
+}
