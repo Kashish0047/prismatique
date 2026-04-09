@@ -150,7 +150,7 @@ body {
 .nav-link.active {
     color: var(--accent-blue);
     background: rgba(0, 102, 204, 0.2);
-    border-bottom: 2px solid var(--accent-blue);
+    border-bottom: 2px solid white;
 }
 
 /* Dropdown Menu Styles */
@@ -208,7 +208,7 @@ body {
     color: var(--text-light);
     text-decoration: none;
     transition: all 0.3s ease;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid white;
 }
 
 .dropdown-link:last-child {
@@ -516,8 +516,8 @@ body {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    background: transparent;
-    color: var(--text-light);
+    background: var(--accent-blue);
+    color: white;
     padding: 12px 20px;
     border-radius: 25px;
     font-weight: bold;
