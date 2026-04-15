@@ -70,8 +70,8 @@ prismatiique site/
 
 ## 🎯 Key Features Deployed
 ✅ **Navigation**: Logo + smooth scrolling to all sections
-✅ **Leaderboard**: Live data from RuxBet API with real-time updates
-✅ **Bonus Section**: 5 casino partners with functional claim links
+✅ **Leaderboard**: Mock leaderboard data with rankings and bonuses
+✅ **Bonus Section**: 3 casino partners with functional claim links
 ✅ **FAQ**: Working accordion with short, clean answers
 ✅ **Responsive**: Mobile-friendly design
 ✅ **Backend**: Secure API integration with real data
