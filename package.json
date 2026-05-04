@@ -1,44 +1,17 @@
 {
-  "name": "prismatique-site",
+  "name": "prismatique-monorepo",
   "version": "1.0.0",
-  "description": "Prismatique website with Node.js backend",
-  "main": "api.js",
-  "engines": {
-    "node": ">=14.0.0"
-  },
+  "private": true,
   "scripts": {
-    "start": "node api.js",
-    "start:frontend": "node server.js",
-    "dev": "nodemon server.js",
-    "dev:api": "nodemon api.js",
-    "deploy": "npm run build && gh-pages -d dist -b gh-pages",
-    "deploy-simple": "gh-pages -d . -b gh-pages",
-    "build": "echo 'No build step needed for static site'",
-    "deploy-git": "git add . && git commit -m \"Update website\" && git push origin main"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "path": "^0.12.7",
-    "vercel": "^51.3.0"
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "install:all": "cd client && npm install && cd ../server && npm install",
+    "start:client": "cd client && npm run start",
+    "start:server": "cd server && npm run start",
+    "start": "concurrently \"npm run start:client\" \"npm run start:server\""
   },
   "devDependencies": {
-    "gh-pages": "^6.3.0",
-    "nodemon": "^3.0.1"
-  },
-  "keywords": [
-    "prismatique",
-    "website",
-    "nodejs"
-  ],
-  "author": "",
-  "license": "ISC",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bablx/prismatique.git"
-  },
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/bablx/prismatique/issues"
-  },
-  "homepage": "https://github.com/bablx/prismatique#readme"
+    "concurrently": "^8.2.1"
+  }
 }
