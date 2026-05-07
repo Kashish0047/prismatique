@@ -675,7 +675,11 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
 @media (max-width: 992px) {
   .desktop-only { display: none; }
   .mobile-only { display: block; width: 100%; margin-top: 20px; }
-  .login-btn-mobile { background: #53fc18; color: #000; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; border: none; }
+  .login-btn-mobile { background: #53fc18; color: #000; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; border: none; cursor: pointer; }
+  .login-btn-mobile.logout { background: #ef4444; color: #fff; margin-top: 10px; }
+  .mobile-user-section { display: flex; flex-direction: column; gap: 8px; }
+  .mobile-user-info { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+  .mobile-coins { font-size: 0.85rem; font-weight: 700; color: #f59e0b; margin-left: auto; }
 }
 @media (min-width: 993px) {
   .mobile-only { display: none; }

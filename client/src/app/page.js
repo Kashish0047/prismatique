@@ -12,6 +12,8 @@ import CoinWallet from '@/components/CoinWallet';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
 
+const STORAGE_KEY = 'prism_auth_v2'; // Single source of truth for storage key
+
 export default function Home() {
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -32,41 +34,45 @@ export default function Home() {
 
   // Persist user session
   useEffect(() => {
-    // New storage key to avoid cache issues
-    const savedUser = localStorage.getItem('prism_auth_v2');
-    if (savedUser && !document.cookie.includes('logout_marker=true')) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      setCoins(parsedUser.coins || 0);
+    const savedUser = localStorage.getItem(STORAGE_KEY);
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setCoins(parsedUser.coins || 0);
+      } catch (e) {
+        // Corrupted storage — clear it
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
     
     // Fetch Info
     fetchStreamInfo();
     fetchActivities();
 
-    // Check for OAuth completion
+    // Check for OAuth callback params
     const params = new URLSearchParams(window.location.search);
-    const justLoggedOut = sessionStorage.getItem('just_logged_out');
 
-    if (params.get('login_success') === 'true' && !justLoggedOut) {
+    if (params.get('login_success') === 'true') {
       const userData = {
         username: params.get('username'),
-        avatar: decodeURIComponent(params.get('avatar')),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
         coins: parseInt(params.get('coins') || '100', 10)
       };
+
+      // Save to localStorage using the consistent key
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
       setUser(userData);
       setCoins(userData.coins);
-      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
-      // Remove logout marker if it exists
-      document.cookie = "logout_marker=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      // Nuclear cleanup: Replace current URL with a clean one and refresh
+      setShowLoginModal(false);
+
+      // Clean up URL params without triggering a reload loop
       router.replace('/');
-      setTimeout(() => window.location.reload(), 100);
+
     } else if (params.get('error')) {
       setError(`Login failed: ${params.get('error')}`);
       setShowLoginModal(true);
       router.replace('/');
-      setTimeout(() => window.location.reload(), 100);
     }
 
     const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
@@ -79,8 +85,7 @@ export default function Home() {
 
   const fetchActivities = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/activity`);
+      const response = await fetch(`${API}/activity`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       if (result.success) {
@@ -93,8 +98,7 @@ export default function Home() {
 
   const fetchStreamInfo = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/kick/stream-info/prismatique`);
+      const response = await fetch(`${API}/kick/stream-info/prismatique`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       if (result.success) {
@@ -111,31 +115,35 @@ export default function Home() {
     }
   };
 
-
   const startLogin = () => {
-    // Redirect to backend OAuth route
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/kick`;
+    // FIX: was missing /api prefix — now correctly points to /api/auth/kick
+    window.location.href = `${API}/auth/kick`;
   };
 
-  const confirmLogin = async (simulate = false) => {
+  const confirmLogin = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/confirm`, {
+      // FIX: was missing /api prefix — now correctly points to /api/auth/confirm
+      const response = await fetch(`${API}/auth/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: kickId,
-          simulateMatch: simulate // Testing purpose
-        })
+        body: JSON.stringify({ username: kickId })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setUser(result.user);
-        localStorage.setItem('prism_user', JSON.stringify(result.user));
+        const userData = {
+          username: result.user.username,
+          avatar: result.user.avatar,
+          coins: result.user.coins || 100
+        };
+        setUser(userData);
+        setCoins(userData.coins);
+        // FIX: was saving to 'prism_user' but session restore reads 'prism_auth_v2'
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
         setShowLoginModal(false);
         resetAuth();
       } else {
@@ -155,13 +163,28 @@ export default function Home() {
     setError('');
   };
 
+  // Single unified logout handler — called from Navbar
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem(STORAGE_KEY);
+    // Also clean up any old keys that may exist
+    localStorage.removeItem('prism_user');
+    localStorage.removeItem('prism_auth');
     sessionStorage.clear();
     setUser(null);
     setCoins(0);
-    // Direct and clean redirect to the origin
-    window.location.href = window.location.origin;
+    setShowLoginModal(false);
+    resetAuth();
+    // Replace so back-button can't restore the logged-in state
+    window.location.replace('/');
+  };
+
+  // Update coins in state + storage consistently
+  const handleCoinsUpdate = (newCoins) => {
+    setCoins(newCoins);
+    const updatedUser = { ...user, coins: newCoins };
+    setUser(updatedUser);
+    // FIX: was saving to 'prism_user' — now uses consistent STORAGE_KEY
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
   };
 
   return (
@@ -313,12 +336,7 @@ export default function Home() {
             <h2 className="section-title">POPULAR <span className="highlight-blue">GAMES</span></h2>
             <p>Try our originals and win big with fake coins!</p>
             <div style={{ marginTop: '20px' }}>
-              <CoinWallet user={user} onCoinsUpdate={(newCoins) => {
-                setCoins(newCoins);
-                const updatedUser = { ...user, coins: newCoins };
-                setUser(updatedUser);
-                localStorage.setItem('prism_user', JSON.stringify(updatedUser));
-              }} />
+              <CoinWallet user={user} onCoinsUpdate={handleCoinsUpdate} />
             </div>
           </div>
           
@@ -362,7 +380,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="modal-overlay" 
-            onClick={() => setShowLoginModal(false)}
+            onClick={() => { setShowLoginModal(false); resetAuth(); }}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}

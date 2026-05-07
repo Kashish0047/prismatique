@@ -16,6 +16,12 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
 
   const toggleMenu = () => setIsActive(!isActive);
 
+  // FIX: Single logout handler — always calls onLogout prop from page.js
+  const handleLogout = () => {
+    setIsActive(false);
+    if (onLogout) onLogout();
+  };
+
   return (
     <header className={`navbar ${scrolled ? 'scrolled' : ''}`}>
       <nav className="nav-container container">
@@ -32,13 +38,29 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
           <li><Link href="/games" className="nav-link" onClick={() => setIsActive(false)}>GAMES</Link></li>
           <li><a href="/#leaderboard" className="nav-link" onClick={() => setIsActive(false)}>RANKINGS</a></li>
           <li><a href="/#faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</a></li>
-          {!user && (
+
+          {/* FIX: Mobile menu now shows user info + logout when logged in */}
+          {user ? (
+            <li className="mobile-only mobile-user-section">
+              <div className="mobile-user-info">
+                <img src={user.avatar} alt={user.username} className="nav-avatar" />
+                <span className="nav-username">{user.username}</span>
+                <span className="mobile-coins">🪙 {(coins || 0).toLocaleString()}</span>
+              </div>
+              <button className="login-btn-mobile logout" onClick={handleLogout}>
+                LOGOUT
+              </button>
+            </li>
+          ) : (
             <li className="mobile-only">
-              <button className="login-btn-mobile" onClick={() => { onLoginClick(); setIsActive(false); }}>LOGIN WITH KICK</button>
+              <button className="login-btn-mobile" onClick={() => { onLoginClick(); setIsActive(false); }}>
+                LOGIN WITH KICK
+              </button>
             </li>
           )}
         </ul>
 
+        {/* Desktop nav actions */}
         <div className="nav-actions desktop-only">
           {user ? (
             <div className="user-profile-nav">
@@ -47,12 +69,10 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
                 <span className="nav-username">{user.username}</span>
               </div>
               <div className="nav-coins">🪙 {(coins || 0).toLocaleString()}</div>
-              <button className="nav-logout-btn" style={{ background: '#ff4444', color: '#fff' }} onClick={() => {
-                document.cookie = "logout_marker=true; path=/; max-age=5"; // Marker lasts 5 seconds
-                localStorage.removeItem('prism_auth_v2');
-                localStorage.clear();
-                window.location.replace('/');
-              }}>FORCE LOGOUT</button>
+              {/* FIX: now calls onLogout prop instead of doing its own localStorage.clear() */}
+              <button className="nav-logout-btn" onClick={handleLogout}>
+                LOGOUT
+              </button>
             </div>
           ) : (
             <button className="nav-login-btn" onClick={onLoginClick}>LOGIN WITH KICK</button>
