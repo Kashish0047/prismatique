@@ -1,52 +1,120 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import Leaderboard from '@/components/Leaderboard';
+import RewardsSection from '@/components/RewardsSection';
 import FAQ from '@/components/FAQ';
+import GamesSection from '@/components/GamesSection';
+import Leaderboard from '@/components/Leaderboard';
+import CoinWallet from '@/components/CoinWallet';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
 
 export default function Home() {
+  const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [kickId, setKickId] = useState('');
   const [user, setUser] = useState(null);
+  const [coins, setCoins] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authStep, setAuthStep] = useState(1); // 1: Username, 2: Verification
   const [verificationCode, setVerificationCode] = useState('');
+  const [streamInfo, setStreamInfo] = useState({ 
+    isLive: false, 
+    followers: 0, 
+    category: 'Offline',
+    loading: true 
+  });
+  const [activities, setActivities] = useState([]);
 
   // Persist user session
   useEffect(() => {
-    const savedUser = localStorage.getItem('prism_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    // New storage key to avoid cache issues
+    const savedUser = localStorage.getItem('prism_auth_v2');
+    if (savedUser && !document.cookie.includes('logout_marker=true')) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      setCoins(parsedUser.coins || 0);
     }
+    
+    // Fetch Info
+    fetchStreamInfo();
+    fetchActivities();
+
+    // Check for OAuth completion
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar')),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      // Remove logout marker if it exists
+      document.cookie = "logout_marker=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      // Nuclear cleanup: Replace current URL with a clean one and refresh
+      router.replace('/');
+      setTimeout(() => window.location.reload(), 100);
+    } else if (params.get('error')) {
+      setError(`Login failed: ${params.get('error')}`);
+      setShowLoginModal(true);
+      router.replace('/');
+      setTimeout(() => window.location.reload(), 100);
+    }
+
+    const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
+    const activityInterval = setInterval(fetchActivities, 30000); // 30 secs
+    return () => {
+      clearInterval(streamInterval);
+      clearInterval(activityInterval);
+    };
   }, []);
 
-  const startLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+  const fetchActivities = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/auth/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: kickId })
-      });
-
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const response = await fetch(`${apiUrl}/activity`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
-
       if (result.success) {
-        setVerificationCode(result.code);
-        setAuthStep(2);
-      } else {
-        setError(result.message || 'Login failed');
+        setActivities(result.data);
       }
     } catch (err) {
-      setError('Server error. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error("Failed to fetch activity:", err);
     }
+  };
+
+  const fetchStreamInfo = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const response = await fetch(`${apiUrl}/kick/stream-info/prismatique`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      if (result.success) {
+        setStreamInfo({
+          isLive: result.isLive,
+          followers: result.followers,
+          category: result.category,
+          loading: false
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch stream info:", err);
+      setStreamInfo(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+
+  const startLogin = () => {
+    // Redirect to backend OAuth route
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/kick`;
   };
 
   const confirmLogin = async (simulate = false) => {
@@ -54,7 +122,7 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/confirm', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -88,8 +156,12 @@ export default function Home() {
   };
 
   const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
-    localStorage.removeItem('prism_user');
+    setCoins(0);
+    // Direct and clean redirect to the origin
+    window.location.href = window.location.origin;
   };
 
   return (
@@ -97,7 +169,8 @@ export default function Home() {
       <Navbar 
         user={user} 
         onLogout={handleLogout} 
-        onLoginClick={() => setShowLoginModal(true)} 
+        onLoginClick={() => setShowLoginModal(true)}
+        coins={coins}
       />
 
       <section id="home" className="hero">
@@ -110,7 +183,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            THE <span className="highlight-blue">BONUSES</span>
+            PRISMATIQUE <span className="highlight-blue">ELITE</span>
           </motion.h1>
           <p className="hero-description">
             Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
@@ -129,45 +202,78 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="bonuses" className="bonus-section section-padding">
+      <section id="stream" className="stream-section section-padding">
         <div className="container">
-          <h2 className="section-title">EXCLUSIVE <span className="highlight-blue">CASINO BONUSES</span></h2>
-          <div className="bonus-grid">
-            <BonusCard 
-              name="RAINBET" 
-              badge="POPULAR" 
-              link="https://rainbet.com/?r=pris"
-              desc="High-stakes crypto casino with instant withdrawals and elite rewards."
-              features={["Instant Payout", "VIP Rewards"]}
-              isFeatured={true}
-            />
-            <BonusCard 
-              name="96.COM" 
-              badge="TOP RATED" 
-              link="https://96game.fun/?channel_id=600061400&ma_token=JS-1JyHcMKeB54jpFC4tkWNd7ZgqdRLk&geo=IN"
-              desc="Asian gaming platform with exclusive bonuses and massive game selection."
-              features={["1000+ Games", "High RTP"]}
-            />
-            <BonusCard 
-              name="WHALE.IO" 
-              badge="PREMIUM" 
-              link="https://whalegames.gg/?tf_clickid=WIO019d548d4f8f7e29bfbb245d459ed259&pubid=432&offer_name=150_cpa_30_rs"
-              desc="Exclusive gaming platform with high-stakes bonuses and VIP treatment."
-              features={["VIP Club", "High Limits"]}
-            />
-            <BonusCard 
-              name="CHANCER" 
-              badge="NEW" 
-              link="#" 
-              desc="The future of social betting. Join the community and win big."
-              features={["Social Betting", "Instant Registration"]}
-            />
+          <div className="stream-layout">
+            <div className="stream-main">
+              <div className="stream-container">
+                {streamInfo.isLive && <div className="live-badge-pulsing">LIVE</div>}
+                <iframe 
+                  src="https://player.kick.com/prismatique" 
+                  width="100%" 
+                  height="100%" 
+                  frameBorder="0" 
+                  scrolling="no" 
+                  allowFullScreen
+                ></iframe>
+              </div>
+            </div>
+            <div className="stream-sidebar">
+              <div className="streamer-card">
+                <div className="streamer-header">
+                  <img src="/pris.png" alt="Prismatique" className="streamer-avatar" />
+                  <div className="streamer-info">
+                    <h3>PRISMATIQUE</h3>
+                    <span className={`status-badge ${streamInfo.isLive ? 'online' : 'offline'}`}>
+                      {streamInfo.isLive ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                </div>
+                <div className="stream-actions">
+                  <a href="https://kick.com/prismatique" target="_blank" rel="noopener noreferrer" className="stream-btn primary">
+                    <i className="fab fa-kickstarter"></i> WATCH ON KICK
+                  </a>
+                </div>
+                <div className="stream-stats">
+                  <div className="stat-item">
+                    <span className="stat-value">{streamInfo.loading ? '...' : (streamInfo.followers || 0).toLocaleString()}</span>
+                    <span className="stat-label">Followers</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-value">{streamInfo.loading ? '...' : streamInfo.category.toUpperCase()}</span>
+                    <span className="stat-label">Category</span>
+                  </div>
+                </div>
+              </div>
+              <div className="activity-card">
+                <h4>LATEST ACTIVITY</h4>
+                <div className="activity-list">
+                  {activities.length > 0 ? activities.map((activity) => (
+                    <div className="activity-item" key={activity.id}>
+                      <div className="activity-icon">
+                        {activity.action.includes('login') ? '👤' : 
+                         activity.action.includes('win') ? '🏆' : 
+                         activity.action.includes('wager') ? '💰' : '🎁'}
+                      </div>
+                      <div className="activity-text">
+                        <p><span className="activity-user">{activity.user}</span> {activity.action}</p>
+                        <span>{activity.time}</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="activity-item">
+                      <p className="loading-text">Loading activity...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <section id="raffles" className="raffles-section">
-        <div className="container">
+        <div className="container" id="giveaways">
           <h2 className="section-title">DAILY <span className="highlight-blue">RAFFLES & GIVEAWAYS</span></h2>
           <div className="raffle-grid">
             <div className="raffle-card">
@@ -198,10 +304,49 @@ export default function Home() {
         </div>
       </section>
 
+      <RewardsSection />
+
+      {/* Premium Games Preview Section */}
+      <section id="games-preview" className="games-preview-section">
+        <div className="container">
+          <div className="section-header-centered">
+            <h2 className="section-title">POPULAR <span className="highlight-blue">GAMES</span></h2>
+            <p>Try our originals and win big with fake coins!</p>
+            <div style={{ marginTop: '20px' }}>
+              <CoinWallet user={user} onCoinsUpdate={(newCoins) => {
+                setCoins(newCoins);
+                const updatedUser = { ...user, coins: newCoins };
+                setUser(updatedUser);
+                localStorage.setItem('prism_user', JSON.stringify(updatedUser));
+              }} />
+            </div>
+          </div>
+          
+          <div className="preview-grid">
+            <div className="preview-card dice" onClick={() => window.location.href = '/games/dice'}>
+              <div className="preview-emoji">🎲</div>
+              <h3>DICE</h3>
+              <p>Predict over or under</p>
+            </div>
+            <div className="preview-card mines" onClick={() => window.location.href = '/games/mines'}>
+              <div className="preview-emoji">💣</div>
+              <h3>MINES</h3>
+              <p>Avoid the hidden mines</p>
+            </div>
+            <div className="preview-card limbo" onClick={() => window.location.href = '/games/limbo'}>
+              <div className="preview-emoji">🚀</div>
+              <h3>LIMBO</h3>
+              <p>Infinite multipliers</p>
+            </div>
+          </div>
+
+          <div className="view-all-container">
+            <Link href="/games" className="view-all-games-btn">VIEW ALL 5 GAMES →</Link>
+          </div>
+        </div>
+      </section>
+
       <Leaderboard />
-
-
-      <FAQ />
 
       <footer>
         <div className="container">
@@ -239,22 +384,14 @@ export default function Home() {
               {error && <div className="modal-error">{error}</div>}
               
               {authStep === 1 ? (
-                <form onSubmit={startLogin} className="login-form">
-                  <div className="input-group">
-                    <span className="input-prefix">kick.com/</span>
-                    <input 
-                      type="text" 
-                      placeholder="Username" 
-                      value={kickId}
-                      onChange={(e) => setKickId(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                  <button type="submit" className="login-submit-btn" disabled={loading}>
-                    {loading ? 'CHECKING...' : 'CONTINUE'}
+                <div className="login-form">
+                  <p className="modal-info-text">
+                    You will be redirected to Kick to safely authorize your account.
+                  </p>
+                  <button onClick={startLogin} className="login-submit-btn" disabled={loading}>
+                    {loading ? 'REDIRECTING...' : 'LOGIN WITH KICK'}
                   </button>
-                </form>
+                </div>
               ) : (
                 <div className="verification-step">
                   <div className="code-display">

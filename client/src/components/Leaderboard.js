@@ -17,8 +17,9 @@ export default function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
       const res = await fetch(`${apiUrl}/leaderboard`);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const result = await res.json();
       if (result.success) {
         setPlayers(result.data);
@@ -56,7 +57,6 @@ export default function Leaderboard() {
     <section id="leaderboard" className="leaderboard-section">
       <div className="container">
         <header className="leaderboard-header">
-          <h2 className="section-title">LEADERBOARD <span className="highlight-blue">RANKINGS</span></h2>
           <div className="leaderboard-filters">
             <button className={`filter-btn ${filter === 'weekly' ? 'active' : ''}`} onClick={() => setFilter('weekly')}>WEEKLY</button>
             <button className={`filter-btn ${filter === 'monthly' ? 'active' : ''}`} onClick={() => setFilter('monthly')}>MONTHLY</button>
@@ -75,7 +75,7 @@ export default function Leaderboard() {
           <AnimatePresence>
             {remaining.map((player, index) => (
               <motion.div 
-                key={player.id}
+                key={player._id || player.username}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.03 }}
