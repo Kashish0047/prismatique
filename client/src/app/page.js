@@ -12,6 +12,8 @@ import CoinWallet from '@/components/CoinWallet';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+const STORAGE_KEY = 'prism_auth_v2'; // Single source of truth for storage key
+
 export default function Home() {
   console.log('🏠 Home component mounted');
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function Home() {
 
   // Persist user session from localStorage
   useEffect(() => {
+<<<<<<< HEAD
     const savedUser = localStorage.getItem('prism_auth_v2');
     console.log('🔍 Loading from localStorage:', savedUser);
     if (savedUser) {
@@ -43,6 +46,17 @@ export default function Home() {
         setCoins(parsedUser.coins || 0);
       } catch (e) {
         console.error('❌ Error parsing localStorage:', e);
+=======
+    const savedUser = localStorage.getItem(STORAGE_KEY);
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setCoins(parsedUser.coins || 0);
+      } catch (e) {
+        // Corrupted storage — clear it
+        localStorage.removeItem(STORAGE_KEY);
+>>>>>>> origin/feature/nextjs-migration
       }
     }
   }, []);
@@ -57,6 +71,34 @@ export default function Home() {
     fetchStreamInfo();
     fetchActivities();
 
+<<<<<<< HEAD
+=======
+    // Check for OAuth callback params
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('login_success') === 'true') {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+
+      // Save to localStorage using the consistent key
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+      setUser(userData);
+      setCoins(userData.coins);
+      setShowLoginModal(false);
+
+      // Clean up URL params without triggering a reload loop
+      router.replace('/');
+
+    } else if (params.get('error')) {
+      setError(`Login failed: ${params.get('error')}`);
+      setShowLoginModal(true);
+      router.replace('/');
+    }
+
+>>>>>>> origin/feature/nextjs-migration
     const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
     const activityInterval = setInterval(fetchActivities, 30000); // 30 secs
     return () => {
@@ -95,8 +137,12 @@ export default function Home() {
 
   const fetchActivities = async () => {
     try {
+<<<<<<< HEAD
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${apiUrl}/activity`);
+=======
+      const response = await fetch(`${API}/activity`);
+>>>>>>> origin/feature/nextjs-migration
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       if (result.success) {
@@ -109,8 +155,7 @@ export default function Home() {
 
   const fetchStreamInfo = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/kick/stream-info/prismatique`);
+      const response = await fetch(`${API}/kick/stream-info/prismatique`);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       if (result.success) {
@@ -127,33 +172,32 @@ export default function Home() {
     }
   };
 
-
   const startLogin = () => {
-    // Redirect to backend OAuth route
     window.location.href = `${API}/auth/kick`;
   };
 
-  const confirmLogin = async (simulate = false) => {
+  const confirmLogin = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/confirm`, {
+      const response = await fetch(`${API}/auth/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: kickId,
-          simulateMatch: simulate // Testing purpose
-        })
+        body: JSON.stringify({ username: kickId })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        const userData = { ...result.user, coins: result.user.coins || 100 };
+        const userData = {
+          username: result.user.username,
+          avatar: result.user.avatar,
+          coins: result.user.coins || 100
+        };
         setUser(userData);
         setCoins(userData.coins);
-        localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
         setShowLoginModal(false);
         resetAuth();
       } else {
@@ -173,6 +217,7 @@ export default function Home() {
     setError('');
   };
 
+  // Single unified logout handler — called from Navbar
   const handleLogout = () => {
     console.log('🚀 NUCLEAR LOGOUT');
     localStorage.clear();
@@ -186,8 +231,20 @@ export default function Home() {
     sessionStorage.setItem('just_logged_out', 'true');
     setUser(null);
     setCoins(0);
-    // Force a hard redirect to home
-    window.location.replace(window.location.origin);
+    setShowLoginModal(false);
+    resetAuth();
+    // Replace so back-button can't restore the logged-in state
+    window.location.replace('/');
+  };
+
+  // Update coins in state + storage consistently
+  const handleCoinsUpdate = (newCoins) => {
+    setCoins(newCoins);
+    const updatedUser = { ...user, coins: newCoins };
+    setUser(updatedUser);
+    // FIX: was saving to 'prism_user' — now uses consistent STORAGE_KEY
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+>>>>>>> origin/feature/nextjs-migration
   };
 
   return (
@@ -337,6 +394,7 @@ export default function Home() {
       <section id="games-preview" className="games-preview-section">
         <div className="container">
           <div className="section-header-centered">
+<<<<<<< HEAD
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -352,6 +410,12 @@ export default function Home() {
                 setUser(updatedUser);
                 localStorage.setItem('prism_auth_v2', JSON.stringify(updatedUser));
               }} />
+=======
+            <h2 className="section-title">POPULAR <span className="highlight-blue">GAMES</span></h2>
+            <p>Try our originals and win big with fake coins!</p>
+            <div style={{ marginTop: '20px' }}>
+              <CoinWallet user={user} onCoinsUpdate={handleCoinsUpdate} />
+>>>>>>> origin/feature/nextjs-migration
             </div>
           </div>
           
@@ -421,7 +485,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="modal-overlay" 
-            onClick={() => setShowLoginModal(false)}
+            onClick={() => { setShowLoginModal(false); resetAuth(); }}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
