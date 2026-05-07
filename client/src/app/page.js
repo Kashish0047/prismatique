@@ -1,34 +1,187 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import Leaderboard from '@/components/Leaderboard';
+import RewardsSection from '@/components/RewardsSection';
 import FAQ from '@/components/FAQ';
+import GamesSection from '@/components/GamesSection';
+import Leaderboard from '@/components/Leaderboard';
+import CoinWallet from '@/components/CoinWallet';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+const STORAGE_KEY = 'prism_auth_v2'; // Single source of truth for storage key
 
 export default function Home() {
+  console.log('🏠 Home component mounted');
+  const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [kickId, setKickId] = useState('');
   const [user, setUser] = useState(null);
+  const [coins, setCoins] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [authStep, setAuthStep] = useState(1); // 1: Username, 2: Verification
   const [verificationCode, setVerificationCode] = useState('');
+  const [streamInfo, setStreamInfo] = useState({
+    isLive: false,
+    followers: 0,
+    category: 'Offline',
+    loading: true
+  });
+  const [activities, setActivities] = useState([]);
 
-  // Persist user session
+  // Persist user session from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('prism_user');
+<<<<<<< HEAD
+    const savedUser = localStorage.getItem('prism_auth_v2');
+    console.log('🔍 Loading from localStorage:', savedUser);
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        console.log('✅ Parsed user from localStorage:', parsedUser);
+        setUser(parsedUser);
+        setCoins(parsedUser.coins || 0);
+      } catch (e) {
+        console.error('❌ Error parsing localStorage:', e);
+=======
+    const savedUser = localStorage.getItem(STORAGE_KEY);
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setCoins(parsedUser.coins || 0);
+      } catch (e) {
+        // Corrupted storage — clear it
+        localStorage.removeItem(STORAGE_KEY);
+>>>>>>> origin/feature/nextjs-migration
+      }
     }
   }, []);
 
-  const startLogin = async (e) => {
-    e.preventDefault();
+  // Log user state changes
+  useEffect(() => {
+    console.log('👤 User state changed:', user);
+  }, [user]);
+
+  // Fetch Info
+  useEffect(() => {
+    fetchStreamInfo();
+    fetchActivities();
+
+<<<<<<< HEAD
+=======
+    // Check for OAuth callback params
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('login_success') === 'true') {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+
+      // Save to localStorage using the consistent key
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+      setUser(userData);
+      setCoins(userData.coins);
+      setShowLoginModal(false);
+
+      // Clean up URL params without triggering a reload loop
+      router.replace('/');
+
+    } else if (params.get('error')) {
+      setError(`Login failed: ${params.get('error')}`);
+      setShowLoginModal(true);
+      router.replace('/');
+    }
+
+>>>>>>> origin/feature/nextjs-migration
+    const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
+    const activityInterval = setInterval(fetchActivities, 30000); // 30 secs
+    return () => {
+      clearInterval(streamInterval);
+      clearInterval(activityInterval);
+    };
+  }, []);
+
+  // Check for OAuth completion
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+    console.log('🔍 OAuth check - params:', params.toString(), 'justLoggedOut:', justLoggedOut);
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      console.log('✅ OAuth success, saving user:', userData);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      
+      // Clear URL parameters instantly
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      // Force a full reload to clear params and ensure clean state
+      window.location.href = '/';
+    } else if (params.get('error')) {
+      setError(`Login failed: ${params.get('error')}`);
+      setShowLoginModal(true);
+      router.replace('/');
+    }
+  }, []);
+
+  const fetchActivities = async () => {
+    try {
+<<<<<<< HEAD
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${apiUrl}/activity`);
+=======
+      const response = await fetch(`${API}/activity`);
+>>>>>>> origin/feature/nextjs-migration
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      if (result.success) {
+        setActivities(result.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch activity:", err);
+    }
+  };
+
+  const fetchStreamInfo = async () => {
+    try {
+      const response = await fetch(`${API}/kick/stream-info/prismatique`);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      if (result.success) {
+        setStreamInfo({
+          isLive: result.isLive,
+          followers: result.followers,
+          category: result.category,
+          loading: false
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch stream info:", err);
+      setStreamInfo(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const startLogin = () => {
+    window.location.href = `${API}/auth/kick`;
+  };
+
+  const confirmLogin = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/start', {
+      const response = await fetch(`${API}/auth/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: kickId })
@@ -37,37 +190,14 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        setVerificationCode(result.code);
-        setAuthStep(2);
-      } else {
-        setError(result.message || 'Login failed');
-      }
-    } catch (err) {
-      setError('Server error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmLogin = async (simulate = false) => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('http://localhost:3001/api/auth/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: kickId,
-          simulateMatch: simulate // Testing purpose
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setUser(result.user);
-        localStorage.setItem('prism_user', JSON.stringify(result.user));
+        const userData = {
+          username: result.user.username,
+          avatar: result.user.avatar,
+          coins: result.user.coins || 100
+        };
+        setUser(userData);
+        setCoins(userData.coins);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
         setShowLoginModal(false);
         resetAuth();
       } else {
@@ -87,17 +217,44 @@ export default function Home() {
     setError('');
   };
 
+  // Single unified logout handler — called from Navbar
   const handleLogout = () => {
+    console.log('🚀 NUCLEAR LOGOUT');
+    localStorage.clear();
+    sessionStorage.clear();
+    // Clear all cookies
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c
+        .replace(/^ +/, "")
+        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+    sessionStorage.setItem('just_logged_out', 'true');
     setUser(null);
-    localStorage.removeItem('prism_user');
+    setCoins(0);
+    setShowLoginModal(false);
+    resetAuth();
+    // Replace so back-button can't restore the logged-in state
+    window.location.replace('/');
+  };
+
+  // Update coins in state + storage consistently
+  const handleCoinsUpdate = (newCoins) => {
+    setCoins(newCoins);
+    const updatedUser = { ...user, coins: newCoins };
+    setUser(updatedUser);
+    // FIX: was saving to 'prism_user' — now uses consistent STORAGE_KEY
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+>>>>>>> origin/feature/nextjs-migration
   };
 
   return (
     <main>
       <Navbar 
+        key={user ? `logged-in-${user.username}` : 'logged-out'}
         user={user} 
         onLogout={handleLogout} 
-        onLoginClick={() => setShowLoginModal(true)} 
+        onLoginClick={() => setShowLoginModal(true)}
+        coins={coins}
       />
 
       <section id="home" className="hero">
@@ -110,7 +267,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            THE <span className="highlight-blue">BONUSES</span>
+            PRISMATIQUE <span className="highlight-blue">ELITE</span>
           </motion.h1>
           <p className="hero-description">
             Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
@@ -129,45 +286,78 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="bonuses" className="bonus-section section-padding">
+      <section id="stream" className="stream-section section-padding">
         <div className="container">
-          <h2 className="section-title">EXCLUSIVE <span className="highlight-blue">CASINO BONUSES</span></h2>
-          <div className="bonus-grid">
-            <BonusCard 
-              name="RAINBET" 
-              badge="POPULAR" 
-              link="https://rainbet.com/?r=pris"
-              desc="High-stakes crypto casino with instant withdrawals and elite rewards."
-              features={["Instant Payout", "VIP Rewards"]}
-              isFeatured={true}
-            />
-            <BonusCard 
-              name="96.COM" 
-              badge="TOP RATED" 
-              link="https://96game.fun/?channel_id=600061400&ma_token=JS-1JyHcMKeB54jpFC4tkWNd7ZgqdRLk&geo=IN"
-              desc="Asian gaming platform with exclusive bonuses and massive game selection."
-              features={["1000+ Games", "High RTP"]}
-            />
-            <BonusCard 
-              name="WHALE.IO" 
-              badge="PREMIUM" 
-              link="https://whalegames.gg/?tf_clickid=WIO019d548d4f8f7e29bfbb245d459ed259&pubid=432&offer_name=150_cpa_30_rs"
-              desc="Exclusive gaming platform with high-stakes bonuses and VIP treatment."
-              features={["VIP Club", "High Limits"]}
-            />
-            <BonusCard 
-              name="CHANCER" 
-              badge="NEW" 
-              link="#" 
-              desc="The future of social betting. Join the community and win big."
-              features={["Social Betting", "Instant Registration"]}
-            />
+          <div className="stream-layout">
+            <div className="stream-main">
+              <div className="stream-container">
+                {streamInfo.isLive && <div className="live-badge-pulsing">LIVE</div>}
+                <iframe 
+                  src="https://player.kick.com/prismatique" 
+                  width="100%" 
+                  height="100%" 
+                  frameBorder="0" 
+                  scrolling="no" 
+                  allowFullScreen
+                ></iframe>
+              </div>
+            </div>
+            <div className="stream-sidebar">
+              <div className="streamer-card">
+                <div className="streamer-header">
+                  <img src="/pris.png" alt="Prismatique" className="streamer-avatar" />
+                  <div className="streamer-info">
+                    <h3>PRISMATIQUE</h3>
+                    <span className={`status-badge ${streamInfo.isLive ? 'online' : 'offline'}`}>
+                      {streamInfo.isLive ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                </div>
+                <div className="stream-actions">
+                  <a href="https://kick.com/prismatique" target="_blank" rel="noopener noreferrer" className="stream-btn primary">
+                    <i className="fab fa-kickstarter"></i> WATCH ON KICK
+                  </a>
+                </div>
+                <div className="stream-stats">
+                  <div className="stat-item">
+                    <span className="stat-value">{streamInfo.loading ? '...' : (streamInfo.followers || 0).toLocaleString()}</span>
+                    <span className="stat-label">Followers</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-value">{streamInfo.loading ? '...' : streamInfo.category.toUpperCase()}</span>
+                    <span className="stat-label">Category</span>
+                  </div>
+                </div>
+              </div>
+              <div className="activity-card">
+                <h4>LATEST ACTIVITY</h4>
+                <div className="activity-list">
+                  {activities.length > 0 ? activities.map((activity) => (
+                    <div className="activity-item" key={activity.id}>
+                      <div className="activity-icon">
+                        {activity.action.includes('login') ? '👤' : 
+                         activity.action.includes('win') ? '🏆' : 
+                         activity.action.includes('wager') ? '💰' : '🎁'}
+                      </div>
+                      <div className="activity-text">
+                        <p><span className="activity-user">{activity.user}</span> {activity.action}</p>
+                        <span>{activity.time}</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="activity-item">
+                      <p className="loading-text">Loading activity...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <section id="raffles" className="raffles-section">
-        <div className="container">
+        <div className="container" id="giveaways">
           <h2 className="section-title">DAILY <span className="highlight-blue">RAFFLES & GIVEAWAYS</span></h2>
           <div className="raffle-grid">
             <div className="raffle-card">
@@ -198,10 +388,88 @@ export default function Home() {
         </div>
       </section>
 
+      <RewardsSection />
+
+      {/* Premium Games Preview Section */}
+      <section id="games-preview" className="games-preview-section">
+        <div className="container">
+          <div className="section-header-centered">
+<<<<<<< HEAD
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="section-title"
+            >
+              PRISMATIQUE <span className="highlight-blue">ORIGINALS</span>
+            </motion.h2>
+            <p className="section-subtitle">Experience the next generation of provably fair gaming.</p>
+            <div className="preview-wallet-wrapper">
+              <CoinWallet user={user} onCoinsUpdate={(newCoins) => {
+                setCoins(newCoins);
+                const updatedUser = { ...user, coins: newCoins };
+                setUser(updatedUser);
+                localStorage.setItem('prism_auth_v2', JSON.stringify(updatedUser));
+              }} />
+=======
+            <h2 className="section-title">POPULAR <span className="highlight-blue">GAMES</span></h2>
+            <p>Try our originals and win big with fake coins!</p>
+            <div style={{ marginTop: '20px' }}>
+              <CoinWallet user={user} onCoinsUpdate={handleCoinsUpdate} />
+>>>>>>> origin/feature/nextjs-migration
+            </div>
+          </div>
+          
+          <div className="preview-grid">
+            <motion.div 
+              whileHover={{ y: -10 }}
+              className="preview-card dice" 
+              onClick={() => window.location.href = '/games/dice'}
+            >
+              <div className="preview-card-inner">
+                <div className="preview-emoji">🎲</div>
+                <h3>DICE</h3>
+                <p>Predict over or under</p>
+                <div className="preview-play-now">PLAY NOW</div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              whileHover={{ y: -10 }}
+              className="preview-card mines" 
+              onClick={() => window.location.href = '/games/mines'}
+            >
+              <div className="preview-card-inner">
+                <div className="preview-emoji">💣</div>
+                <h3>MINES</h3>
+                <p>Avoid hidden mines</p>
+                <div className="preview-play-now">PLAY NOW</div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              whileHover={{ y: -10 }}
+              className="preview-card limbo" 
+              onClick={() => window.location.href = '/games/limbo'}
+            >
+              <div className="preview-card-inner">
+                <div className="preview-emoji">🚀</div>
+                <h3>LIMBO</h3>
+                <p>Infinite multipliers</p>
+                <div className="preview-play-now">PLAY NOW</div>
+              </div>
+            </motion.div>
+          </div>
+
+          <div className="view-all-container">
+            <Link href="/games" className="view-all-games-btn">
+              <span>EXPLORE ALL GAMES</span>
+              <i className="fas fa-arrow-right"></i>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <Leaderboard />
-
-
-      <FAQ />
 
       <footer>
         <div className="container">
@@ -217,7 +485,7 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="modal-overlay" 
-            onClick={() => setShowLoginModal(false)}
+            onClick={() => { setShowLoginModal(false); resetAuth(); }}
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
@@ -239,22 +507,14 @@ export default function Home() {
               {error && <div className="modal-error">{error}</div>}
               
               {authStep === 1 ? (
-                <form onSubmit={startLogin} className="login-form">
-                  <div className="input-group">
-                    <span className="input-prefix">kick.com/</span>
-                    <input 
-                      type="text" 
-                      placeholder="Username" 
-                      value={kickId}
-                      onChange={(e) => setKickId(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                  <button type="submit" className="login-submit-btn" disabled={loading}>
-                    {loading ? 'CHECKING...' : 'CONTINUE'}
+                <div className="login-form">
+                  <p className="modal-info-text">
+                    You will be redirected to Kick to safely authorize your account.
+                  </p>
+                  <button onClick={startLogin} className="login-submit-btn" disabled={loading}>
+                    {loading ? 'REDIRECTING...' : 'LOGIN WITH KICK'}
                   </button>
-                </form>
+                </div>
               ) : (
                 <div className="verification-step">
                   <div className="code-display">
