@@ -47,12 +47,7 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
                 <span className="nav-username">{user.username}</span>
               </div>
               <div className="nav-coins">🪙 {(coins || 0).toLocaleString()}</div>
-              <button className="nav-logout-btn" style={{ background: '#ff4444', color: '#fff' }} onClick={() => {
-                document.cookie = "logout_marker=true; path=/; max-age=5"; // Marker lasts 5 seconds
-                localStorage.removeItem('prism_auth_v2');
-                localStorage.clear();
-                window.location.replace('/');
-              }}>FORCE LOGOUT</button>
+              <button className="nav-logout-btn" style={{ background: '#ff4444', color: '#fff' }} onClick={onLogout}>LOGOUT</button>
             </div>
           ) : (
             <button className="nav-login-btn" onClick={onLoginClick}>LOGIN WITH KICK</button>

@@ -17,7 +17,7 @@ export default function Leaderboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await fetch(`${apiUrl}/leaderboard`);
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const result = await res.json();

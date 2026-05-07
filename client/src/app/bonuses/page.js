@@ -3,84 +3,59 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
 export default function BonusesPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [kickId, setKickId] = useState('');
   const [user, setUser] = useState(null);
+  const [coins, setCoins] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [authStep, setAuthStep] = useState(1);
-  const [verificationCode, setVerificationCode] = useState('');
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('prism_user');
+    const savedUser = localStorage.getItem('prism_auth_v2');
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        setCoins(parsed.coins || 0);
+      } catch (e) {}
+    }
+
+    // Check for OAuth completion
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      window.location.replace('/bonuses');
+      setTimeout(() => window.location.reload(), 100);
+    } else if (params.get('error')) {
+      setError(`Login failed: ${params.get('error')}`);
+      setShowLoginModal(true);
+      window.location.replace('/bonuses');
     }
   }, []);
 
   const handleLogout = () => {
-    setUser(null);
+    localStorage.removeItem('prism_auth_v2');
     localStorage.removeItem('prism_user');
+    sessionStorage.setItem('just_logged_out', 'true');
+    setUser(null);
+    setCoins(0);
+    window.location.href = window.location.origin;
   };
 
-  const startLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('http://localhost:3001/api/auth/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: kickId })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setVerificationCode(result.code);
-        setAuthStep(2);
-      } else {
-        setError(result.message || 'Login failed');
-      }
-    } catch (err) {
-      setError('Server error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmLogin = async (simulate = false) => {
-    setLoading(true);
-    setError('');
-    try {
-      const response = await fetch('http://localhost:3001/api/auth/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          username: kickId,
-          simulateMatch: simulate 
-        })
-      });
-      const result = await response.json();
-      if (result.success) {
-        setUser(result.user);
-        localStorage.setItem('prism_user', JSON.stringify(result.user));
-        setShowLoginModal(false);
-        resetAuth();
-      } else {
-        setError(result.message || 'Verification failed');
-      }
-    } catch (err) {
-      setError('Server error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetAuth = () => {
-    setAuthStep(1);
-    setKickId('');
-    setVerificationCode('');
-    setError('');
+  const startLogin = () => {
+    window.location.href = `${API}/auth/kick`;
   };
 
   return (
@@ -88,7 +63,8 @@ export default function BonusesPage() {
       <Navbar 
         user={user} 
         onLogout={handleLogout} 
-        onLoginClick={() => setShowLoginModal(true)} 
+        onLoginClick={() => setShowLoginModal(true)}
+        coins={coins}
       />
 
       <section className="bonuses-hero">
@@ -166,58 +142,23 @@ export default function BonusesPage() {
               <div className="modal-kick-icon">
                 <i className="fab fa-kickstarter" style={{ color: '#53fc18', fontSize: '50px' }}></i>
               </div>
-              <h3>{authStep === 1 ? 'LOGIN WITH KICK' : 'VERIFY OWNERSHIP'}</h3>
-              <p>
-                {authStep === 1 
-                  ? 'Enter your Kick username to track your rewards and rank.' 
-                  : `Please add the code below to your Kick bio to verify you own this account.`}
-              </p>
+              <h3>LOGIN WITH KICK</h3>
+              <p>Enter your Kick username to track your rewards and rank.</p>
               
               {error && <div className="modal-error">{error}</div>}
               
-              {authStep === 1 ? (
-                <form onSubmit={startLogin} className="login-form">
-                  <div className="input-group">
-                    <span className="input-prefix">kick.com/</span>
-                    <input 
-                      type="text" 
-                      placeholder="Username" 
-                      value={kickId}
-                      onChange={(e) => setKickId(e.target.value)}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                  <button type="submit" className="login-submit-btn" disabled={loading}>
-                    {loading ? 'CHECKING...' : 'CONTINUE'}
-                  </button>
-                </form>
-              ) : (
-                <div className="verification-step">
-                  <div className="code-display">
-                    <code>{verificationCode}</code>
-                    <button className="copy-btn" onClick={() => navigator.clipboard.writeText(verificationCode)}>
-                      <i className="fas fa-copy"></i>
-                    </button>
-                  </div>
-                  
-                  <div className="verification-actions">
-                    <button 
-                      className="login-submit-btn" 
-                      onClick={() => confirmLogin()}
-                      disabled={loading}
-                    >
-                      {loading ? 'VERIFYING...' : 'I HAVE UPDATED MY BIO'}
-                    </button>
-                  </div>
-                  
-                  <button className="back-link" onClick={() => setAuthStep(1)}>BACK</button>
-                </div>
-              )}
+              <div className="login-form">
+                <p className="modal-info-text">
+                  You will be redirected to Kick to safely authorize your account.
+                </p>
+                <button onClick={startLogin} className="login-submit-btn" disabled={loading}>
+                  {loading ? 'REDIRECTING...' : 'LOGIN WITH KICK'}
+                </button>
+              </div>
               
               <button 
                 className="modal-close-link" 
-                onClick={() => { setShowLoginModal(false); resetAuth(); }} 
+                onClick={() => { setShowLoginModal(false); setError(''); }} 
                 disabled={loading}
               >
                 CANCEL

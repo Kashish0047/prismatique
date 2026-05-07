@@ -39,8 +39,20 @@ const connectDB = async () => {
 connectDB();
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -85,7 +97,8 @@ const pQueue = new PuppeteerQueue();
 // In-memory stores
 const verificationCodes = new Map();
 const streamInfoCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const activeFetches = new Set(); // Track usernames being fetched
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
 // Mock Database / State
 
@@ -188,12 +201,19 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
   let apiData = await fetchStreamInfoLightweight(username);
   
   if (!apiData) {
-    console.log(`🔄 [Stream] API blocked for ${username}, falling back to Puppeteer...`);
-    try {
-      // Use the queue to fetch real data
-      apiData = await pQueue.add(() => fetchKickDataViaPuppeteer(username));
-    } catch (err) {
-      console.error(`❌ [Stream] Puppeteer fallback failed:`, err.message);
+    if (activeFetches.has(lowerUser)) {
+      console.log(`⏳ [Stream] Fetch already in progress for ${username}, waiting for next cycle...`);
+    } else {
+      console.log(`🔄 [Stream] API blocked for ${username}, falling back to Puppeteer...`);
+      activeFetches.add(lowerUser);
+      try {
+        // Use the queue to fetch real data
+        apiData = await pQueue.add(() => fetchKickDataViaPuppeteer(username));
+      } catch (err) {
+        console.error(`❌ [Stream] Puppeteer fallback failed:`, err.message);
+      } finally {
+        activeFetches.delete(lowerUser);
+      }
     }
   }
 
@@ -245,14 +265,19 @@ const fetchKickDataViaPuppeteer = async (username) => {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
     // Navigate to pass Cloudflare challenge
-    // domcontentloaded is much faster than networkidle2
-    await page.goto(`https://kick.com/${username}`, { 
-      waitUntil: 'domcontentloaded', 
-      timeout: 45000 
-    });
+    try {
+      await page.goto(`https://kick.com/${username}`, { 
+        waitUntil: 'domcontentloaded', 
+        timeout: 30000 
+      });
+      // Wait for any element that indicates the page is loaded
+      await page.waitForSelector('body', { timeout: 10000 });
+    } catch (e) {
+      console.log(`⚠️ Puppeteer navigation warning for ${username}: ${e.message}`);
+    }
 
     // Short wait for potential redirects or JS execution
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 3000));
     
     // Now use in-page fetch (browser has valid Cloudflare cookies)
     if (!browser.isConnected() || page.isClosed()) throw new Error('Browser or page closed before evaluation');
@@ -395,8 +420,17 @@ app.get('/api/auth/kick', (req, res) => {
   const codeVerifier = base64URLEncode(crypto.randomBytes(32));
   const codeChallenge = base64URLEncode(sha256(Buffer.from(codeVerifier)));
 
-  res.cookie('kick_auth_state', state, { httpOnly: true, maxAge: 900000 });
-  res.cookie('kick_code_verifier', codeVerifier, { httpOnly: true, maxAge: 900000 });
+  const cookieOptions = { 
+    httpOnly: true, 
+    maxAge: 900000, 
+    sameSite: 'lax', 
+    secure: false,
+    path: '/'
+  };
+  
+  console.log(`🔑 [OAuth] Starting for state: ${state}`);
+  res.cookie('kick_auth_state', state, cookieOptions);
+  res.cookie('kick_code_verifier', codeVerifier, cookieOptions);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -421,8 +455,15 @@ app.get('/api/auth/kick/callback', async (req, res) => {
     return res.redirect(`${clientUrl}?error=${error}`);
   }
 
+  console.log('🔍 OAuth Callback received');
+  console.log('Cookies:', req.cookies);
+  console.log('Query State:', state);
+  console.log('Stored State:', storedState);
+
   if (!state || state !== storedState) {
-    console.error('State mismatch:', { state, storedState });
+    console.error('❌ State mismatch error');
+    console.error(`Received State: ${state}`);
+    console.error(`Stored State: ${storedState}`);
     return res.redirect(`${clientUrl}?error=state_mismatch`);
   }
 
@@ -635,12 +676,16 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`📡 Internal IP: http://127.0.0.1:${PORT}`);
   
   // Prefetch stream info after a delay to avoid resource contention
   setTimeout(() => {
     console.log('📡 Prefetching Prismatique stream info...');
+    if (activeFetches.has('prismatique')) return;
+    activeFetches.add('prismatique');
+    
     pQueue.add(() => fetchKickDataViaPuppeteer('prismatique')).then(data => {
       if (data) {
         streamInfoCache.set('prismatique', { 
@@ -653,6 +698,8 @@ const server = app.listen(PORT, () => {
       }
     }).catch(err => {
       console.log('⚠️ Prefetch error:', err.message);
+    }).finally(() => {
+      activeFetches.delete('prismatique');
     });
   }, 10000); // 10s delay
 });
