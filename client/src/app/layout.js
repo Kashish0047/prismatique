@@ -1,8 +1,12 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Prismatique - Premium Casino Bonuses",
-  description: "Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.",
+  title: "Prismatique | Premium Gaming Portal",
+  description: "The ultimate destination for premium gaming, rewards, and elite casino bonuses.",
+  icons: {
+    icon: "/pris.png",
+    apple: "/pris.png",
+  }
 };
 
 export default function RootLayout({ children }) {
