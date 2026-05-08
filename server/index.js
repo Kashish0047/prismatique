@@ -119,14 +119,28 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/activity', async (req, res) => {
   try {
-    const activities = await Activity.find().sort({ timestamp: -1 }).limit(10);
-    // Format to match old UI expectation
+    // Only fetch non-login activities to make the feed dynamic and game-focused
+    const activities = await Activity.find({ action: { $not: /logged in/i } })
+      .sort({ timestamp: -1 })
+      .limit(10);
+      
+    const getTimeAgo = (date) => {
+      const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      return `${Math.floor(hours / 24)}d ago`;
+    };
+
     const formatted = activities.map(a => ({
       id: a._id,
       user: a.user,
       action: a.action,
-      time: 'Just now' // Simplified for now
+      time: getTimeAgo(a.timestamp)
     }));
+    
     res.json({ success: true, data: formatted });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching activity" });
@@ -191,9 +205,9 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
   const { username } = req.params;
   const lowerUser = username.toLowerCase();
 
-  // Return cache if fresh (10 minutes for stream info)
+  // Return cache if fresh (5 minutes for stream info)
   const cached = streamInfoCache.get(lowerUser);
-  if (cached && (Date.now() - cached.timestamp < 10 * 60 * 1000)) {
+  if (cached && (Date.now() - cached.timestamp < 5 * 60 * 1000)) {
     return res.json({ success: true, ...cached.data });
   }
 
@@ -202,12 +216,11 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
   
   if (!apiData) {
     if (activeFetches.has(lowerUser)) {
-      console.log(`⏳ [Stream] Fetch already in progress for ${username}, waiting for next cycle...`);
+      console.log(`⏳ [Stream] Fetch already in progress for ${username}`);
     } else {
       console.log(`🔄 [Stream] API blocked for ${username}, falling back to Puppeteer...`);
       activeFetches.add(lowerUser);
       try {
-        // Use the queue to fetch real data
         apiData = await pQueue.add(() => fetchKickDataViaPuppeteer(username));
       } catch (err) {
         console.error(`❌ [Stream] Puppeteer fallback failed:`, err.message);
@@ -223,10 +236,9 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
     return res.json({ success: true, ...result });
   }
 
-  // Final fallback to defaults if both failed
   const defaults = {
     exists: true,
-    followers: 400,
+    followers: 0,
     isLive: false,
     category: 'Slots',
   };
@@ -235,113 +247,76 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
 
 // ========== BIO VERIFICATION (uses Puppeteer — only for login) ==========
 
-// Comprehensive Scraper for Stream Info & Bio
-// Strategy: Navigate to Kick page to pass Cloudflare, then use in-page fetch() 
-// to call the API with valid cookies.
 const fetchKickDataViaPuppeteer = async (username) => {
   let browser = null;
   try {
     console.log(`🚀 [Puppeteer] Launching browser for ${username}...`);
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage', 
-        '--disable-gpu',
-        '--no-zygote',
-        '--single-process',
-        '--disable-extensions'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
-      else req.continue();
-    });
-    
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-
-    // Navigate to pass Cloudflare challenge
-    try {
-      await page.goto(`https://kick.com/${username}`, { 
-        waitUntil: 'domcontentloaded', 
-        timeout: 30000 
-      });
-      // Wait for any element that indicates the page is loaded
-      await page.waitForSelector('body', { timeout: 10000 });
-    } catch (e) {
-      console.log(`⚠️ Puppeteer navigation warning for ${username}: ${e.message}`);
-    }
-
-    // Short wait for potential redirects or JS execution
-    await new Promise(r => setTimeout(r, 3000));
     
-    // Now use in-page fetch (browser has valid Cloudflare cookies)
-    if (!browser.isConnected() || page.isClosed()) throw new Error('Browser or page closed before evaluation');
+    await page.goto(`https://kick.com/${username}`, { 
+      waitUntil: 'networkidle2', 
+      timeout: 45000 
+    });
 
-    const apiData = await page.evaluate(async (user) => {
+    // Wait for bio or followers to be visible
+    await page.waitForSelector('body', { timeout: 10000 });
+
+    const data = await page.evaluate(async (user) => {
       const timestamp = Date.now();
-      const apis = [
-        { url: `/api/v2/channels/${user}?t=${timestamp}`, version: 'v2' },
-        { url: `/api/v1/channels/${user}?t=${timestamp}`, version: 'v1' }
-      ];
-      
-      let data = { followers_count: 0, bio: '', livestream: null, version: 'none' };
-      
-      for (const api of apis) {
+      let followers = 0;
+      let bio = '';
+      let isLive = false;
+      let category = 'Offline';
+
+      // Try internal API fetch first (Cloudflare bypass)
+      try {
+        const res = await fetch(`/api/v2/channels/${user}?t=${timestamp}`);
+        if (res.ok) {
+          const json = await res.json();
+          const d = json.data || json;
+          followers = d.followers_count || d.followersCount || 0;
+          bio = d.user?.bio || d.bio || '';
+          isLive = !!(d.livestream && d.livestream.is_live);
+          category = d.livestream?.categories?.[0]?.name || 'Offline';
+        }
+      } catch (e) {}
+
+      // DOM Fallback for Followers
+      if (!followers) {
         try {
-          const res = await fetch(api.url);
-          if (res.ok) {
-            const json = await res.json();
-            const d = json.data || json;
-            data.followers_count = d.followers_count || d.followersCount || 0;
-            data.bio = d.user?.bio || d.bio || '';
-            data.livestream = d.livestream || null;
-            data.version = api.version;
-            break; 
+          const followerEl = Array.from(document.querySelectorAll('span, div, p')).find(el => 
+            el.textContent.toLowerCase().includes('followers') && /\d/.test(el.textContent)
+          );
+          if (followerEl) {
+            const matches = followerEl.textContent.match(/[\d,.]+/);
+            if (matches) followers = parseInt(matches[0].replace(/,/g, ''), 10);
           }
         } catch (e) {}
       }
 
-      if (!data.bio) {
+      // DOM Fallback for Bio
+      if (!bio) {
         try {
-          const bioElement = document.querySelector('.user-bio') || 
-                           document.querySelector('[data-test="user-bio"]') ||
-                           Array.from(document.querySelectorAll('span, p')).find(el => el.textContent.includes('PRIS-'));
-          if (bioElement) data.bio = bioElement.textContent;
+          const bioEl = document.querySelector('[data-test="user-bio"]') || document.querySelector('.user-bio');
+          if (bioEl) bio = bioEl.textContent;
         } catch (e) {}
       }
 
-      return data;
+      return { followers, bio, isLive, category };
     }, username);
 
-    if (apiData) {
-      console.log(`✅ [Puppeteer] Got data via in-page ${apiData.version} API for ${username}. Followers: ${apiData.followers_count}`);
-      return {
-        followers: apiData.followers_count,
-        isLive: !!(apiData.livestream && apiData.livestream.is_live !== false),
-        category: apiData.livestream?.categories?.[0]?.name || 'Offline',
-        bio: apiData.bio
-      };
-    }
-
-    console.log(`❌ [Puppeteer] In-page API fetch failed for ${username}`);
-    return null;
+    return data;
   } catch (err) {
     console.error(`❌ [Puppeteer] Error fetching ${username}:`, err.message);
     return null;
   } finally {
-    if (browser) {
-      try {
-        await browser.close();
-        console.log(`🛑 [Puppeteer] Browser closed for ${username}`);
-      } catch (e) {
-        console.error(`⚠️ [Puppeteer] Error closing browser:`, e.message);
-      }
-    }
+    if (browser) await browser.close();
   }
 };
 
@@ -419,6 +394,7 @@ app.get('/api/auth/kick', (req, res) => {
   const state = crypto.randomBytes(32).toString('hex');
   const codeVerifier = base64URLEncode(crypto.randomBytes(32));
   const codeChallenge = base64URLEncode(sha256(Buffer.from(codeVerifier)));
+  const returnTo = req.query.return_to || '/';
 
   const cookieOptions = { 
     httpOnly: true, 
@@ -428,9 +404,10 @@ app.get('/api/auth/kick', (req, res) => {
     path: '/'
   };
   
-  console.log(`🔑 [OAuth] Starting for state: ${state}`);
+  console.log(`🔑 [OAuth] Starting for state: ${state}, returning to: ${returnTo}`);
   res.cookie('kick_auth_state', state, cookieOptions);
   res.cookie('kick_code_verifier', codeVerifier, cookieOptions);
+  res.cookie('kick_return_to', returnTo, cookieOptions);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -449,22 +426,17 @@ app.get('/api/auth/kick/callback', async (req, res) => {
   const { code, state, error } = req.query;
   const storedState = req.cookies.kick_auth_state;
   const codeVerifier = req.cookies.kick_code_verifier;
+  const returnTo = req.cookies.kick_return_to || '/';
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
   if (error) {
-    return res.redirect(`${clientUrl}?error=${error}`);
+    return res.redirect(`${clientUrl}${returnTo}?error=${error}`);
   }
 
   console.log('🔍 OAuth Callback received');
-  console.log('Cookies:', req.cookies);
-  console.log('Query State:', state);
-  console.log('Stored State:', storedState);
-
   if (!state || state !== storedState) {
     console.error('❌ State mismatch error');
-    console.error(`Received State: ${state}`);
-    console.error(`Stored State: ${storedState}`);
-    return res.redirect(`${clientUrl}?error=state_mismatch`);
+    return res.redirect(`${clientUrl}${returnTo}?error=state_mismatch`);
   }
 
   try {
@@ -488,7 +460,6 @@ app.get('/api/auth/kick/callback', async (req, res) => {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Handle Kick API response: { data: [...], message: "OK" }
     const kickUserRaw = userResponse.data;
     const kickUserData = (kickUserRaw?.data && kickUserRaw.data[0]) 
       ? kickUserRaw.data[0] 
@@ -496,7 +467,6 @@ app.get('/api/auth/kick/callback', async (req, res) => {
 
     const username = kickUserData.name || kickUserData.username || kickUserData.display_name;
     const avatar = kickUserData.profile_picture || kickUserData.profile_image || kickUserData.avatar_url || `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`;
-
 
     if (!username) throw new Error('Could not retrieve username from Kick API');
 
@@ -512,18 +482,18 @@ app.get('/api/auth/kick/callback', async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    // Log activity
     new Activity({ user: username, action: "logged in via Kick" }).save();
 
     // Clear cookies
     res.clearCookie('kick_auth_state');
     res.clearCookie('kick_code_verifier');
+    res.clearCookie('kick_return_to');
 
-    // Redirect to frontend with success
-    res.redirect(`${clientUrl}?login_success=true&username=${user.username}&avatar=${encodeURIComponent(user.avatar)}&coins=${user.coins}`);
+    // Redirect back to the starting page
+    res.redirect(`${clientUrl}${returnTo}?login_success=true&username=${user.username}&avatar=${encodeURIComponent(user.avatar)}&coins=${user.coins}`);
   } catch (err) {
     console.error('❌ OAuth Detail Error:', err.response?.data || err.message);
-    res.redirect(`${clientUrl}?error=auth_failed&detail=${encodeURIComponent(JSON.stringify(err.response?.data || err.message))}`);
+    res.redirect(`${clientUrl}${returnTo}?error=auth_failed`);
   }
 });
 
@@ -589,9 +559,17 @@ app.post('/api/games/play', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid request' });
   }
   try {
-    const user = await User.findOne({ username: username.toLowerCase() });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (user.coins < betAmount) return res.status(400).json({ success: false, message: 'Not enough coins' });
+    let user = await User.findOne({ username: username.toLowerCase() });
+    if (!user) {
+      // Auto-create user if they are missing in the DB but have a local session
+      user = new User({
+        username: username.toLowerCase(),
+        avatar: `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`,
+        coins: 100
+      });
+      await user.save();
+    }
+    if (user.coins < betAmount) return res.status(400).json({ success: false, message: 'Not enough coins. Use the Faucet to claim more!' });
 
     let result = 'loss';
     let payout = 0;
@@ -742,6 +720,44 @@ async function seedDatabase() {
       ];
       await Activity.insertMany(initialActivity);
     }
+
+    // Dynamic Activity Simulator: Generate realistic casino activity every 30-60 seconds
+    setInterval(async () => {
+      try {
+        const fakeUsers = ['CryptoKing', 'BetMaster', 'Jackpot777', 'SpinWin', 'HighRoller', 'LuckyStar', 'PrismPlayer', 'Whale99', 'DiceGod', 'LimboKing'];
+        const fakeGames = ['dice', 'limbo', 'mines', 'dragon_tower', 'chicken'];
+        
+        const randomUser = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
+        const randomGame = fakeGames[Math.floor(Math.random() * fakeGames.length)];
+        
+        const isWin = Math.random() > 0.6; // 40% chance to win, 60% chance to just wager
+        
+        let actionStr = '';
+        if (isWin) {
+          const winAmount = Math.floor(Math.random() * 500) + 50;
+          actionStr = `won ${winAmount} coins in ${randomGame}`;
+        } else {
+          const wagerAmount = Math.floor(Math.random() * 100) + 10;
+          actionStr = `wagered ${wagerAmount} coins in ${randomGame}`;
+        }
+
+        // 10% chance to hit a level up instead
+        if (Math.random() > 0.9) {
+          const level = Math.floor(Math.random() * 50) + 2;
+          actionStr = `reached Level ${level}`;
+        }
+
+        await new Activity({ user: randomUser, action: actionStr, timestamp: new Date() }).save();
+        
+        // Keep the database clean, delete activities older than 24 hours
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        await Activity.deleteMany({ timestamp: { $lt: yesterday } });
+        
+      } catch (e) {
+        console.error("Activity Simulator Error:", e.message);
+      }
+    }, 45000); // Every 45 seconds
+
   } catch (err) {
     console.error("❌ Seeding Error:", err);
   }

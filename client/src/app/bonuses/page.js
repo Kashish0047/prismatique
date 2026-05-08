@@ -36,12 +36,12 @@ export default function BonusesPage() {
       setCoins(userData.coins);
       localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
       sessionStorage.removeItem('just_logged_out');
-      window.location.replace('/bonuses');
-      setTimeout(() => window.location.reload(), 100);
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = window.location.pathname;
     } else if (params.get('error')) {
       setError(`Login failed: ${params.get('error')}`);
       setShowLoginModal(true);
-      window.location.replace('/bonuses');
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
@@ -51,11 +51,12 @@ export default function BonusesPage() {
     sessionStorage.setItem('just_logged_out', 'true');
     setUser(null);
     setCoins(0);
-    window.location.href = window.location.origin;
+    window.location.replace(window.location.pathname);
   };
 
   const startLogin = () => {
-    window.location.href = `${API}/auth/kick`;
+    sessionStorage.removeItem('just_logged_out');
+    window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
   };
 
   return (
@@ -63,7 +64,7 @@ export default function BonusesPage() {
       <Navbar 
         user={user} 
         onLogout={handleLogout} 
-        onLoginClick={() => setShowLoginModal(true)}
+        onLoginClick={startLogin}
         coins={coins}
       />
 
@@ -82,15 +83,26 @@ export default function BonusesPage() {
 
       <section className="bonus-section section-padding">
         <div className="container">
-          <div className="bonus-grid">
-            <BonusCard 
-              name="RAINBET" 
-              badge="POPULAR" 
-              link="https://rainbet.com/?r=pris"
-              desc="High-stakes crypto casino with instant withdrawals and elite rewards."
-              features={["Instant Payout", "VIP Rewards"]}
-              isFeatured={true}
-            />
+          <div className="rainbet-highlight-card">
+            <div className="rainbet-content">
+              <div className="rainbet-badge pulse-badge">🔥 HOTTEST DEAL</div>
+              <h3 className="rainbet-title">RAINBET</h3>
+              <p className="rainbet-desc">High-stakes crypto casino with instant withdrawals and elite rewards. Experience the most trusted platform in the industry.</p>
+              <div className="rainbet-features">
+                <span><i className="fas fa-bolt"></i> Instant Payout</span>
+                <span><i className="fas fa-crown"></i> VIP Rewards</span>
+                <span><i className="fas fa-coins"></i> High RTP</span>
+              </div>
+              <a href="https://rainbet.com/?r=pris" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
+                CLAIM EXCLUSIVE BONUS <i className="fas fa-arrow-right"></i>
+              </a>
+            </div>
+            <div className="rainbet-visual">
+              <div className="rainbet-logo">RAINBET</div>
+            </div>
+          </div>
+
+          <div className="bonus-grid" style={{ marginTop: '40px' }}>
             <BonusCard 
               name="96.COM" 
               badge="TOP RATED" 

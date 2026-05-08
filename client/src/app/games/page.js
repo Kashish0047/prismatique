@@ -1,129 +1,97 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Navbar from '@/components/Navbar';
-import CoinWallet from '@/components/CoinWallet';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 const GAMES = [
-  { id: 'dice', name: 'DICE', emoji: '🎲', desc: 'Predict and win with custom odds', color: '#00f2ff', image: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=400' },
-  { id: 'limbo', name: 'LIMBO', emoji: '🚀', desc: 'Watch the multiplier skyrocket', color: '#a855f7', image: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&q=80&w=400' },
-  { id: 'mines', name: 'MINES', emoji: '💣', desc: 'High stakes grid-based survival', color: '#f59e0b', image: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=400' },
-  { id: 'dragon_tower', name: 'DRAGON TOWER', emoji: '🐉', desc: 'Climb the tower for massive payouts', color: '#ef4444', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=400' },
-  { id: 'chicken', name: 'CHICKEN', emoji: '🌟', desc: 'Find the Rockstar chicken', color: '#53fc18', image: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=400' },
+  { id: 'dice',         name: 'DICE',         emoji: '🎲', desc: 'Predict over/under numbers', color: '#00f2ff', tag: 'CLASSIC',   image: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=800' },
+  { id: 'limbo',        name: 'LIMBO',        emoji: '🚀', desc: 'Set targets, watch it launch', color: '#a855f7', tag: 'HIGH RISK', image: 'https://images.unsplash.com/photo-1614728263952-84ea256f9679?auto=format&fit=crop&q=80&w=800' },
+  { id: 'mines',        name: 'MINES',        emoji: '💣', desc: 'Grid-based diamond hunt',     color: '#f59e0b', tag: 'STRATEGY',  image: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=800' },
+  { id: 'dragon_tower', name: 'DRAGON TOWER', emoji: '🐉', desc: 'Climb for massive rewards',    color: '#ef4444', tag: 'ADVENTURE', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=800' },
+  { id: 'chicken',      name: 'CHICKEN',      emoji: '🌟', desc: 'Find the rockstar chicken',   color: '#53fc18', tag: 'LUCKY',     image: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=800' },
 ];
 
-export default function GamesPage() {
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [user, setUser] = useState(null);
+export default function GamesHubPage() {
+  const [user, setUser]   = useState(null);
   const [coins, setCoins] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+
+  const fetchBalance = async (username) => {
+    try {
+      const res = await fetch(`${API}/coins/balance/${username}`);
+      const data = await res.json();
+      if (data.success) {
+        setCoins(data.coins);
+        const saved = localStorage.getItem('prism_auth_v2');
+        if (saved) {
+          const p = JSON.parse(saved);
+          p.coins = data.coins;
+          localStorage.setItem('prism_auth_v2', JSON.stringify(p));
+        }
+      }
+    } catch (e) {}
+  };
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('prism_auth_v2');
-    if (savedUser) {
+    const saved = localStorage.getItem('prism_auth_v2');
+    if (saved) {
       try {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        setCoins(parsed.coins || 0);
+        const p = JSON.parse(saved);
+        setUser(p);
+        setCoins(p.coins || 0);
+        fetchBalance(p.username);
       } catch (e) {}
-    }
-
-    // Check for OAuth completion
-    const params = new URLSearchParams(window.location.search);
-    const justLoggedOut = sessionStorage.getItem('just_logged_out');
-
-    if (params.get('login_success') === 'true' && !justLoggedOut) {
-      const userData = {
-        username: params.get('username'),
-        avatar: decodeURIComponent(params.get('avatar') || ''),
-        coins: parseInt(params.get('coins') || '100', 10)
-      };
-      setUser(userData);
-      setCoins(userData.coins);
-      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
-      sessionStorage.removeItem('just_logged_out');
-      window.history.replaceState({}, document.title, window.location.pathname);
-      window.location.href = '/games';
-    } else if (params.get('error')) {
-      setError(`Login failed: ${params.get('error')}`);
-      setShowLoginModal(true);
-      window.location.replace('/games');
     }
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    document.cookie.split(";").forEach((c) => {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-    sessionStorage.setItem('just_logged_out', 'true');
-    setUser(null);
-    setCoins(0);
-    window.location.replace(window.location.origin);
+    localStorage.clear(); sessionStorage.clear();
+    document.cookie.split(';').forEach(c => { document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/'); });
+    window.location.replace('/games');
   };
 
   const startLogin = () => {
-    window.location.href = `${API}/auth/kick`;
+    window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent('/games')}`;
   };
 
   return (
-    <main className="min-h-screen bg-dark">
-      <Navbar 
-        key={user ? `logged-in-${user.username}` : 'logged-out'}
-        user={user} 
-        coins={coins} 
-        onLogout={handleLogout}
-        onLoginClick={() => setShowLoginModal(true)}
-      />
+    <main className="hub-page">
+      <Navbar user={user} onLogout={handleLogout} onLoginClick={startLogin} coins={coins} />
 
-      <section className="games-hub-hero">
-        <div className="container">
-          <div className="hub-content">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-gradient"
-            >
-              PRISMATIQUE <span className="highlight-blue">ORIGINALS</span>
-            </motion.h1>
-            <p>Experience the thrill of our custom-built, provably fair casino games.</p>
-            <div className="hub-wallet-container">
-              <CoinWallet user={user} onCoinsUpdate={(newCoins) => setCoins(newCoins)} />
-            </div>
-          </div>
+      <div className="hub-content-wrap">
+        <header className="hub-header-v3">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="hub-title-container">
+            <span className="hub-badge">ORIGINALS</span>
+            <h1>PRISMATIQUE <span className="blue-glow">GAMES</span></h1>
+            <p>Experience our premium suite of provably fair arcade games.</p>
+          </motion.div>
+        </header>
 
-          <div className="hub-grid">
-            {GAMES.map((game, index) => (
-              <motion.div
-                key={game.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+        <div className="hub-cards-container">
+          <div className="hub-cards-grid-v3">
+            {GAMES.map((game, i) => (
+              <motion.div 
+                key={game.id} 
+                className="hub-card-v3-wrapper"
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: i * 0.08 }}
               >
-                <Link href={`/games/${game.id}`} className="hub-card" style={{ '--game-color': game.color }}>
-                  <div className="hub-card-img" style={{ backgroundImage: `url(${game.image})` }}>
-                    <div className="hub-card-overlay">
-                      <div className="hub-emoji-container">
-                        <span className="hub-emoji">{game.emoji}</span>
-                      </div>
-                    </div>
+                <Link href={`/games/${game.id}`} className="hub-card-v3" style={{ '--gc': game.color }}>
+                  <div className="hub-card-v3-top">
+                    <div className="hub-card-v3-img" style={{ backgroundImage: `url(${game.image})` }} />
+                    <div className="hub-card-v3-overlay" />
+                    <div className="hub-card-v3-tag">{game.tag}</div>
+                    <div className="hub-card-v3-emoji">{game.emoji}</div>
                   </div>
-                  <div className="hub-card-info">
-                    <div className="hub-card-header">
-                      <h3>{game.name}</h3>
-                      <div className="fair-badge">PROVABLY FAIR</div>
-                    </div>
+                  <div className="hub-card-v3-body">
+                    <h3>{game.name}</h3>
                     <p>{game.desc}</p>
-                    <div className="hub-play-btn">
-                      <span>PLAY NOW</span>
-                      <i className="fas fa-play"></i>
+                    <div className="hub-card-v3-footer">
+                      <div className="hub-btn-pill">PLAY NOW</div>
+                      <div className="hub-fair-info">🛡️ PROVABLY FAIR</div>
                     </div>
                   </div>
                 </Link>
@@ -131,202 +99,61 @@ export default function GamesPage() {
             ))}
           </div>
         </div>
-      </section>
-
-      {/* Kick Login Modal */}
-      <AnimatePresence>
-        {showLoginModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-overlay"
-            onClick={() => setShowLoginModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="modal-content glass-panel"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="modal-kick-icon">
-                <div className="icon-glow">
-                  <i className="fab fa-kickstarter" style={{ color: '#53fc18', fontSize: '50px' }}></i>
-                </div>
-              </div>
-              <h3 className="text-gradient">LOGIN WITH KICK</h3>
-              <p>Enter your Kick username to track your rewards and rank.</p>
-
-              {error && <div className="modal-error">{error}</div>}
-
-              <div className="login-form">
-                <p className="modal-info-text">
-                  You will be redirected to Kick to safely authorize your account.
-                </p>
-                <button onClick={startLogin} className="login-submit-btn" disabled={loading}>
-                  {loading ? 'REDIRECTING...' : 'LOGIN WITH KICK'}
-                </button>
-              </div>
-
-              <button
-                className="modal-close-link"
-                onClick={() => { setShowLoginModal(false); setError(''); }}
-                disabled={loading}
-              >
-                CANCEL
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
 
       <style jsx>{`
-        .games-hub-hero { 
-          padding: 160px 0 100px; 
-          background: radial-gradient(circle at 50% 0%, rgba(0, 242, 255, 0.05) 0%, transparent 50%);
-        }
-        .hub-content { text-align: center; margin-bottom: 80px; }
-        .hub-content h1 { font-size: 4.5rem; font-weight: 900; letter-spacing: -3px; margin-bottom: 20px; line-height: 1.1; }
-        .hub-content p { color: var(--text-secondary); font-size: 1.2rem; max-width: 600px; margin: 0 auto 40px; }
-        
-        .hub-wallet-container {
-          display: inline-flex;
-          padding: 10px;
-          background: rgba(255,255,255,0.03);
-          border-radius: 20px;
-          border: 1px solid rgba(255,255,255,0.05);
-          backdrop-filter: blur(10px);
-        }
+        .hub-page { min-height: 100vh; background: #080a0f; color: #fff; }
+        .hub-content-wrap { padding-top: 100px; padding-bottom: 120px; }
 
-        .hub-grid { 
-          display: grid; 
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); 
-          gap: 30px; 
-        }
+        .hub-header-v3 { padding: 80px 0 60px; text-align: center; background: radial-gradient(circle at 50% 0%, rgba(0, 242, 255, 0.08) 0%, transparent 60%); }
+        .hub-badge { display: inline-block; padding: 6px 16px; background: rgba(0, 242, 255, 0.1); color: #00f2ff; border-radius: 30px; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 20px; border: 1px solid rgba(0, 242, 255, 0.2); }
+        .hub-header-v3 h1 { font-size: 4rem; font-weight: 900; letter-spacing: -2px; margin-bottom: 20px; }
+        .blue-glow { color: #00f2ff; text-shadow: 0 0 40px rgba(0, 242, 255, 0.4); }
+        .hub-header-v3 p { color: rgba(255,255,255,0.4); font-size: 1.2rem; max-width: 600px; margin: 0 auto; line-height: 1.6; }
 
-        .hub-card {
+        .hub-cards-container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        .hub-cards-grid-v3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 32px; }
+
+        .hub-card-v3 {
+          display: flex;
+          flex-direction: column;
           background: #11141b;
-          border-radius: 30px;
+          border-radius: 32px;
+          border: 1px solid rgba(255,255,255,0.06);
           overflow: hidden;
-          text-decoration: none;
-          border: 1px solid rgba(255,255,255,0.05);
-          transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-          display: block;
+          text-decoration: none !important;
+          transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
           height: 100%;
           position: relative;
         }
 
-        .hub-card::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(135deg, var(--game-color) 0%, transparent 100%);
-          opacity: 0;
-          transition: 0.5s;
-          z-index: 0;
-        }
+        .hub-card-v3-top { height: 220px; position: relative; overflow: hidden; }
+        .hub-card-v3-img { position: absolute; inset: 0; background-size: cover; background-position: center; transition: 0.6s; opacity: 0.5; }
+        .hub-card-v3-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(8,10,15,0.8) 100%); }
+        .hub-card-v3-tag { position: absolute; top: 24px; left: 24px; background: rgba(0,0,0,0.6); padding: 6px 14px; border-radius: 12px; font-size: 0.6rem; font-weight: 900; letter-spacing: 1.5px; color: var(--gc); border: 1px solid color-mix(in srgb, var(--gc) 30%, transparent); backdrop-filter: blur(8px); }
+        .hub-card-v3-emoji { position: absolute; bottom: 20px; right: 24px; font-size: 4rem; transition: 0.4s; }
 
-        .hub-card:hover {
-          transform: translateY(-15px) scale(1.02);
-          border-color: var(--game-color);
-          box-shadow: 0 30px 60px rgba(0,0,0,0.6), 0 0 30px color-mix(in srgb, var(--game-color) 20%, transparent);
-        }
+        .hub-card-v3-body { padding: 32px; flex: 1; display: flex; flex-direction: column; }
+        .hub-card-v3-body h3 { font-size: 2rem; font-weight: 900; color: #fff; margin-bottom: 12px; text-decoration: none !important; border: none !important; }
+        .hub-card-v3-body p { color: rgba(255,255,255,0.5); font-size: 1rem; line-height: 1.6; margin-bottom: 28px; }
 
-        .hub-card:hover::before { opacity: 0.05; }
+        .hub-card-v3-footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+        .hub-btn-pill { background: var(--gc); color: #000; padding: 12px 28px; border-radius: 14px; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px; transition: 0.3s; }
+        .hub-fair-info { color: #53fc18; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; }
 
-        .hub-card-img {
-          height: 220px;
-          background-size: cover;
-          background-position: center;
-          position: relative;
-          transition: 0.5s;
-        }
+        /* Hover effects */
+        .hub-card-v3:hover { transform: translateY(-15px); border-color: var(--gc); box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 40px color-mix(in srgb, var(--gc) 15%, transparent); }
+        .hub-card-v3:hover .hub-card-v3-img { transform: scale(1.1); opacity: 0.7; }
+        .hub-card-v3:hover .hub-card-v3-emoji { transform: scale(1.2) rotate(12deg); }
+        .hub-card-v3:hover .hub-btn-pill { transform: scale(1.05); box-shadow: 0 10px 20px color-mix(in srgb, var(--gc) 30%, transparent); }
 
-        .hub-card:hover .hub-card-img { height: 200px; }
-
-        .hub-card-overlay {
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(to bottom, transparent, rgba(8, 10, 15, 0.9));
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .hub-emoji-container {
-          background: rgba(0,0,0,0.5);
-          width: 100px;
-          height: 100px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          backdrop-filter: blur(10px);
-          border: 2px solid rgba(255,255,255,0.1);
-          transition: 0.5s;
-        }
-
-        .hub-emoji { font-size: 3.5rem; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .hub-card:hover .hub-emoji { transform: scale(1.2) rotate(12deg); }
-        .hub-card:hover .hub-emoji-container { border-color: var(--game-color); box-shadow: 0 0 20px var(--game-color); }
-
-        .hub-card-info { padding: 30px; position: relative; z-index: 1; }
-        
-        .hub-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .hub-card-info h3 { font-size: 1.6rem; font-weight: 900; color: #fff; margin: 0; }
-        
-        .fair-badge {
-          font-size: 0.6rem;
-          font-weight: 900;
-          padding: 4px 10px;
-          background: rgba(83, 252, 24, 0.1);
-          color: #53fc18;
-          border-radius: 6px;
-          border: 1px solid rgba(83, 252, 24, 0.2);
-          letter-spacing: 1px;
-        }
-
-        .hub-card-info p { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.6; }
-
-        .hub-play-btn {
-          background: var(--game-color);
-          color: #000;
-          text-align: center;
-          padding: 15px;
-          border-radius: 16px;
-          font-weight: 900;
-          font-size: 1rem;
-          transition: 0.3s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-
-        .hub-card:hover .hub-play-btn {
-          transform: scale(1.05);
-          box-shadow: 0 15px 30px color-mix(in srgb, var(--game-color) 40%, transparent);
-        }
-
-        .icon-glow {
-          position: relative;
-          display: inline-block;
-        }
-        .icon-glow::after {
-          content: '';
-          position: absolute;
-          inset: -20px;
-          background: #53fc18;
-          filter: blur(40px);
-          opacity: 0.2;
-          z-index: -1;
-        }
+        /* Global style resets to kill underlines */
+        :global(a), :global(a:hover), :global(a:focus) { text-decoration: none !important; }
+        :global(h3), :global(h2), :global(h1) { text-decoration: none !important; border: none !important; }
 
         @media (max-width: 768px) {
-          .hub-content h1 { font-size: 2.8rem; }
-          .games-hub-hero { padding-top: 120px; }
+          .hub-header-v3 h1 { font-size: 2.8rem; }
+          .hub-cards-grid-v3 { grid-template-columns: 1fr; }
         }
       `}</style>
     </main>

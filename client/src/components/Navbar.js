@@ -34,10 +34,10 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
         <ul className={`nav-menu ${isActive ? 'active' : ''}`}>
           <li><Link href="/" className="nav-link" onClick={() => setIsActive(false)}>HOME</Link></li>
           <li><Link href="/bonuses" className="nav-link" onClick={() => setIsActive(false)}>BONUSES</Link></li>
-          <li><a href="/#raffles" className="nav-link" onClick={() => setIsActive(false)}>RAFFLES</a></li>
+          <li><Link href="/raffles" className="nav-link" onClick={() => setIsActive(false)}>RAFFLES</Link></li>
           <li><Link href="/games" className="nav-link" onClick={() => setIsActive(false)}>GAMES</Link></li>
-          <li><a href="/#leaderboard" className="nav-link" onClick={() => setIsActive(false)}>RANKINGS</a></li>
-          <li><a href="/#faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</a></li>
+          <li><Link href="/rankings" className="nav-link" onClick={() => setIsActive(false)}>RANKINGS</Link></li>
+          <li><Link href="/faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</Link></li>
 
           {/* FIX: Mobile menu now shows user info + logout when logged in */}
           {user ? (

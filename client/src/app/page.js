@@ -35,8 +35,7 @@ export default function Home() {
 
   // Persist user session from localStorage
   useEffect(() => {
-<<<<<<< HEAD
-    const savedUser = localStorage.getItem('prism_auth_v2');
+    const savedUser = localStorage.getItem(STORAGE_KEY);
     console.log('🔍 Loading from localStorage:', savedUser);
     if (savedUser) {
       try {
@@ -46,17 +45,8 @@ export default function Home() {
         setCoins(parsedUser.coins || 0);
       } catch (e) {
         console.error('❌ Error parsing localStorage:', e);
-=======
-    const savedUser = localStorage.getItem(STORAGE_KEY);
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        setCoins(parsedUser.coins || 0);
-      } catch (e) {
         // Corrupted storage — clear it
         localStorage.removeItem(STORAGE_KEY);
->>>>>>> origin/feature/nextjs-migration
       }
     }
   }, []);
@@ -71,34 +61,6 @@ export default function Home() {
     fetchStreamInfo();
     fetchActivities();
 
-<<<<<<< HEAD
-=======
-    // Check for OAuth callback params
-    const params = new URLSearchParams(window.location.search);
-
-    if (params.get('login_success') === 'true') {
-      const userData = {
-        username: params.get('username'),
-        avatar: decodeURIComponent(params.get('avatar') || ''),
-        coins: parseInt(params.get('coins') || '100', 10)
-      };
-
-      // Save to localStorage using the consistent key
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
-      setUser(userData);
-      setCoins(userData.coins);
-      setShowLoginModal(false);
-
-      // Clean up URL params without triggering a reload loop
-      router.replace('/');
-
-    } else if (params.get('error')) {
-      setError(`Login failed: ${params.get('error')}`);
-      setShowLoginModal(true);
-      router.replace('/');
-    }
-
->>>>>>> origin/feature/nextjs-migration
     const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
     const activityInterval = setInterval(fetchActivities, 30000); // 30 secs
     return () => {
@@ -120,29 +82,24 @@ export default function Home() {
         coins: parseInt(params.get('coins') || '100', 10)
       };
       console.log('✅ OAuth success, saving user:', userData);
-      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
       sessionStorage.removeItem('just_logged_out');
       
       // Clear URL parameters instantly
       window.history.replaceState({}, document.title, window.location.pathname);
       
       // Force a full reload to clear params and ensure clean state
-      window.location.href = '/';
+      window.location.href = window.location.pathname;
     } else if (params.get('error')) {
       setError(`Login failed: ${params.get('error')}`);
       setShowLoginModal(true);
-      router.replace('/');
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
   const fetchActivities = async () => {
     try {
-<<<<<<< HEAD
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiUrl}/activity`);
-=======
       const response = await fetch(`${API}/activity`);
->>>>>>> origin/feature/nextjs-migration
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
       if (result.success) {
@@ -173,7 +130,8 @@ export default function Home() {
   };
 
   const startLogin = () => {
-    window.location.href = `${API}/auth/kick`;
+    sessionStorage.removeItem('just_logged_out');
+    window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
   };
 
   const confirmLogin = async () => {
@@ -239,12 +197,12 @@ export default function Home() {
 
   // Update coins in state + storage consistently
   const handleCoinsUpdate = (newCoins) => {
+    if (!user) return; // Prevent updates if user is null (e.g., during logout)
     setCoins(newCoins);
     const updatedUser = { ...user, coins: newCoins };
     setUser(updatedUser);
     // FIX: was saving to 'prism_user' — now uses consistent STORAGE_KEY
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
->>>>>>> origin/feature/nextjs-migration
   };
 
   return (
@@ -253,7 +211,7 @@ export default function Home() {
         key={user ? `logged-in-${user.username}` : 'logged-out'}
         user={user} 
         onLogout={handleLogout} 
-        onLoginClick={() => setShowLoginModal(true)}
+        onLoginClick={startLogin}
         coins={coins}
       />
 
@@ -388,13 +346,58 @@ export default function Home() {
         </div>
       </section>
 
-      <RewardsSection />
+      <section className="bonuses-preview-section">
+        <div className="container">
+          <div className="section-header-centered">
+            <h2 className="section-title">EXCLUSIVE <span className="highlight-blue">BONUSES</span></h2>
+            <p className="section-subtitle">Premium deals hand-picked for the Prismatique community.</p>
+          </div>
+          
+          <div className="rainbet-highlight-card">
+            <div className="rainbet-content">
+              <div className="rainbet-badge pulse-badge">🔥 HOTTEST DEAL</div>
+              <h3 className="rainbet-title">RAINBET</h3>
+              <p className="rainbet-desc">High-stakes crypto casino with instant withdrawals and elite rewards. Experience the most trusted platform in the industry.</p>
+              <div className="rainbet-features">
+                <span><i className="fas fa-bolt"></i> Instant Payout</span>
+                <span><i className="fas fa-crown"></i> VIP Rewards</span>
+                <span><i className="fas fa-coins"></i> High RTP</span>
+              </div>
+              <a href="https://rainbet.com/?r=pris" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
+                CLAIM EXCLUSIVE BONUS <i className="fas fa-arrow-right"></i>
+              </a>
+            </div>
+            <div className="rainbet-visual">
+              <div className="rainbet-logo">RAINBET</div>
+            </div>
+          </div>
+
+          <div className="other-bonuses-grid">
+            <div className="bonus-mini-card">
+              <h4>96.COM</h4>
+              <p>Asian gaming platform with massive game selection.</p>
+              <a href="https://96game.fun/?channel_id=600061400&ma_token=JS-1JyHcMKeB54jpFC4tkWNd7ZgqdRLk&geo=IN" target="_blank" rel="noopener noreferrer" className="bonus-mini-btn">VISIT</a>
+            </div>
+            <div className="bonus-mini-card">
+              <h4>WHALE.IO</h4>
+              <p>Exclusive platform with high-stakes bonuses.</p>
+              <a href="https://whalegames.gg/?tf_clickid=WIO019d548d4f8f7e29bfbb245d459ed259&pubid=432&offer_name=150_cpa_30_rs" target="_blank" rel="noopener noreferrer" className="bonus-mini-btn">VISIT</a>
+            </div>
+          </div>
+
+          <div className="view-all-container" style={{ marginTop: '80px' }}>
+            <Link href="/bonuses" className="view-all-games-btn">
+              <span>VIEW ALL BONUSES</span>
+              <i className="fas fa-arrow-right"></i>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       {/* Premium Games Preview Section */}
       <section id="games-preview" className="games-preview-section">
         <div className="container">
           <div className="section-header-centered">
-<<<<<<< HEAD
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -404,18 +407,7 @@ export default function Home() {
             </motion.h2>
             <p className="section-subtitle">Experience the next generation of provably fair gaming.</p>
             <div className="preview-wallet-wrapper">
-              <CoinWallet user={user} onCoinsUpdate={(newCoins) => {
-                setCoins(newCoins);
-                const updatedUser = { ...user, coins: newCoins };
-                setUser(updatedUser);
-                localStorage.setItem('prism_auth_v2', JSON.stringify(updatedUser));
-              }} />
-=======
-            <h2 className="section-title">POPULAR <span className="highlight-blue">GAMES</span></h2>
-            <p>Try our originals and win big with fake coins!</p>
-            <div style={{ marginTop: '20px' }}>
               <CoinWallet user={user} onCoinsUpdate={handleCoinsUpdate} />
->>>>>>> origin/feature/nextjs-migration
             </div>
           </div>
           
@@ -469,7 +461,21 @@ export default function Home() {
         </div>
       </section>
 
-      <Leaderboard />
+      <section className="homepage-leaderboard-preview section-padding">
+        <div className="container">
+          <div className="section-header-centered">
+            <h2 className="section-title">GLOBAL <span className="highlight-blue">RANKINGS</span></h2>
+            <p className="section-subtitle">Top players competing for glory.</p>
+          </div>
+          <Leaderboard />
+          <div className="view-all-container mt-10">
+            <Link href="/rankings" className="view-all-games-btn">
+              <span>VIEW FULL RANKINGS</span>
+              <i className="fas fa-arrow-right"></i>
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <footer>
         <div className="container">

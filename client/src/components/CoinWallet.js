@@ -11,21 +11,28 @@ export default function CoinWallet({ user, onCoinsUpdate }) {
   const [claiming, setClaiming] = useState(false);
   const [claimMsg, setClaimMsg] = useState('');
 
-  const fetchBalance = useCallback(async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`${API}/coins/balance/${user.username}`);
-      const data = await res.json();
-      if (data.success) {
-        setCoins(data.coins);
-        setCanClaim(data.canClaim);
-        setNextClaimAt(data.nextClaimAt);
-        if (onCoinsUpdate) onCoinsUpdate(data.coins);
-      }
-    } catch (e) {}
-  }, [user, onCoinsUpdate]);
+  useEffect(() => { 
+    if (!user?.username) return;
+    
+    const fetchBalance = async () => {
+      try {
+        const res = await fetch(`${API}/coins/balance/${user.username}`);
+        const data = await res.json();
+        if (data.success) {
+          setCoins(data.coins);
+          setCanClaim(data.canClaim);
+          setNextClaimAt(data.nextClaimAt);
+          
+          // Only trigger parent update if coins actually changed to prevent loops
+          if (onCoinsUpdate && data.coins !== user.coins) {
+            onCoinsUpdate(data.coins);
+          }
+        }
+      } catch (e) {}
+    };
 
-  useEffect(() => { fetchBalance(); }, [fetchBalance]);
+    fetchBalance();
+  }, [user?.username]); // ONLY run when the username changes, not on every render
 
   // Timer logic
   useEffect(() => {
