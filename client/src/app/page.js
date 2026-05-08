@@ -6,16 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/components/Navbar';
 import RewardsSection from '@/components/RewardsSection';
 import FAQ from '@/components/FAQ';
-import GamesSection from '@/components/GamesSection';
 import Leaderboard from '@/components/Leaderboard';
 import CoinWallet from '@/components/CoinWallet';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
-const STORAGE_KEY = 'prism_auth_v2'; // Single source of truth for storage key
+const STORAGE_KEY = 'prism_auth_v2';
 
 export default function Home() {
-  console.log('🏠 Home component mounted');
   const router = useRouter();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [kickId, setKickId] = useState('');
@@ -23,7 +20,7 @@ export default function Home() {
   const [coins, setCoins] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [authStep, setAuthStep] = useState(1); // 1: Username, 2: Verification
+  const [authStep, setAuthStep] = useState(1);
   const [verificationCode, setVerificationCode] = useState('');
   const [streamInfo, setStreamInfo] = useState({
     isLive: false,
@@ -33,47 +30,33 @@ export default function Home() {
   });
   const [activities, setActivities] = useState([]);
 
-  // Persist user session from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_KEY);
-    console.log('🔍 Loading from localStorage:', savedUser);
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
-        console.log('✅ Parsed user from localStorage:', parsedUser);
         setUser(parsedUser);
         setCoins(parsedUser.coins || 0);
       } catch (e) {
-        console.error('❌ Error parsing localStorage:', e);
-        // Corrupted storage — clear it
         localStorage.removeItem(STORAGE_KEY);
       }
     }
   }, []);
 
-  // Log user state changes
-  useEffect(() => {
-    console.log('👤 User state changed:', user);
-  }, [user]);
-
-  // Fetch Info
   useEffect(() => {
     fetchStreamInfo();
     fetchActivities();
-
-    const streamInterval = setInterval(fetchStreamInfo, 300000); // 5 mins
-    const activityInterval = setInterval(fetchActivities, 30000); // 30 secs
+    const streamInterval = setInterval(fetchStreamInfo, 300000);
+    const activityInterval = setInterval(fetchActivities, 30000);
     return () => {
       clearInterval(streamInterval);
       clearInterval(activityInterval);
     };
   }, []);
 
-  // Check for OAuth completion
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const justLoggedOut = sessionStorage.getItem('just_logged_out');
-    console.log('🔍 OAuth check - params:', params.toString(), 'justLoggedOut:', justLoggedOut);
 
     if (params.get('login_success') === 'true' && !justLoggedOut) {
       const userData = {
@@ -81,14 +64,8 @@ export default function Home() {
         avatar: decodeURIComponent(params.get('avatar') || ''),
         coins: parseInt(params.get('coins') || '100', 10)
       };
-      console.log('✅ OAuth success, saving user:', userData);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
       sessionStorage.removeItem('just_logged_out');
-      
-      // Clear URL parameters instantly
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      // Force a full reload to clear params and ensure clean state
       window.location.href = window.location.pathname;
     } else if (params.get('error')) {
       setError(`Login failed: ${params.get('error')}`);
@@ -124,7 +101,6 @@ export default function Home() {
         });
       }
     } catch (err) {
-      console.error("Failed to fetch stream info:", err);
       setStreamInfo(prev => ({ ...prev, loading: false }));
     }
   };
@@ -137,16 +113,13 @@ export default function Home() {
   const confirmLogin = async () => {
     setLoading(true);
     setError('');
-
     try {
       const response = await fetch(`${API}/auth/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: kickId })
       });
-
       const result = await response.json();
-
       if (result.success) {
         const userData = {
           username: result.user.username,
@@ -175,12 +148,9 @@ export default function Home() {
     setError('');
   };
 
-  // Single unified logout handler — called from Navbar
   const handleLogout = () => {
-    console.log('🚀 NUCLEAR LOGOUT');
     localStorage.clear();
     sessionStorage.clear();
-    // Clear all cookies
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
@@ -191,17 +161,14 @@ export default function Home() {
     setCoins(0);
     setShowLoginModal(false);
     resetAuth();
-    // Replace so back-button can't restore the logged-in state
     window.location.replace('/');
   };
 
-  // Update coins in state + storage consistently
   const handleCoinsUpdate = (newCoins) => {
-    if (!user) return; // Prevent updates if user is null (e.g., during logout)
+    if (!user) return;
     setCoins(newCoins);
     const updatedUser = { ...user, coins: newCoins };
     setUser(updatedUser);
-    // FIX: was saving to 'prism_user' — now uses consistent STORAGE_KEY
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
   };
 
@@ -394,7 +361,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Premium Games Preview Section */}
       <section id="games-preview" className="games-preview-section">
         <div className="container">
           <div className="section-header-centered">
@@ -483,7 +449,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Kick Login Modal */}
       <AnimatePresence>
         {showLoginModal && (
           <motion.div 
@@ -556,23 +521,5 @@ export default function Home() {
         )}
       </AnimatePresence>
     </main>
-  );
-}
-
-function BonusCard({ name, badge, link, desc, features, isFeatured }) {
-  return (
-    <div className={`bonus-card ${isFeatured ? 'featured' : ''}`}>
-      <div className="bonus-badge">{badge}</div>
-      <h3 className="bonus-name">{name}</h3>
-      <p className="bonus-desc">{desc}</p>
-      <div className="bonus-features">
-        {features.map((f, i) => (
-          <span key={i} className="feature-tag">{f}</span>
-        ))}
-      </div>
-      <a href={link} target="_blank" rel="noopener noreferrer" className="bonus-button">
-        CLAIM NOW <i className="fas fa-arrow-right"></i>
-      </a>
-    </div>
   );
 }

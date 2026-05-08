@@ -16,7 +16,6 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
 
   const toggleMenu = () => setIsActive(!isActive);
 
-  // FIX: Single logout handler — always calls onLogout prop from page.js
   const handleLogout = () => {
     setIsActive(false);
     if (onLogout) onLogout();
@@ -39,7 +38,6 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
           <li><Link href="/rankings" className="nav-link" onClick={() => setIsActive(false)}>RANKINGS</Link></li>
           <li><Link href="/faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</Link></li>
 
-          {/* FIX: Mobile menu now shows user info + logout when logged in */}
           {user ? (
             <li className="mobile-only mobile-user-section">
               <div className="mobile-user-info">
@@ -60,7 +58,6 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
           )}
         </ul>
 
-        {/* Desktop nav actions */}
         <div className="nav-actions desktop-only">
           {user ? (
             <div className="user-profile-nav">
@@ -70,7 +67,6 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
               </div>
               <div className="nav-coins">🪙 {(coins || 0).toLocaleString()}</div>
               <button className="nav-logout-btn" style={{ background: '#ff4444', color: '#fff' }} onClick={handleLogout}>LOGOUT</button>
-
             </div>
           ) : (
             <button className="nav-login-btn" onClick={onLoginClick}>LOGIN WITH KICK</button>

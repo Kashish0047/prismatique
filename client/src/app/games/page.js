@@ -141,13 +141,11 @@ export default function GamesHubPage() {
         .hub-btn-pill { background: var(--gc); color: #000; padding: 12px 28px; border-radius: 14px; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px; transition: 0.3s; }
         .hub-fair-info { color: #53fc18; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; }
 
-        /* Hover effects */
         .hub-card-v3:hover { transform: translateY(-15px); border-color: var(--gc); box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 40px color-mix(in srgb, var(--gc) 15%, transparent); }
         .hub-card-v3:hover .hub-card-v3-img { transform: scale(1.1); opacity: 0.7; }
         .hub-card-v3:hover .hub-card-v3-emoji { transform: scale(1.2) rotate(12deg); }
         .hub-card-v3:hover .hub-btn-pill { transform: scale(1.05); box-shadow: 0 10px 20px color-mix(in srgb, var(--gc) 30%, transparent); }
 
-        /* Global style resets to kill underlines */
         :global(a), :global(a:hover), :global(a:focus) { text-decoration: none !important; }
         :global(h3), :global(h2), :global(h1) { text-decoration: none !important; border: none !important; }
 

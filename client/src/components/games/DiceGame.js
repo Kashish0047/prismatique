@@ -32,7 +32,6 @@ export default function DiceGame({ user, onCoinsUpdate }) {
 
   return (
     <div className="gp-wrap">
-      {/* Result display */}
       <div className={`gp-result-box ${win ? 'gp-win' : loss ? 'gp-loss' : ''}`}>
         {result?.error ? (
           <div className="gp-err">{result.error}</div>
@@ -49,29 +48,24 @@ export default function DiceGame({ user, onCoinsUpdate }) {
         )}
       </div>
 
-      {/* Controls */}
       <div className="gp-controls">
-        {/* Direction toggle */}
         <div className="gp-dir-row">
           <button className={`gp-dir ${direction === 'under' ? 'gp-dir-active' : ''}`} onClick={() => setDirection('under')}>UNDER</button>
           <div className="gp-target-num">{target}</div>
           <button className={`gp-dir ${direction === 'over' ? 'gp-dir-active' : ''}`} onClick={() => setDirection('over')}>OVER</button>
         </div>
 
-        {/* Slider */}
         <div className="gp-slider-wrap">
           <input type="range" min={2} max={98} value={target} onChange={e => setTarget(+e.target.value)} className="gp-slider" style={{ '--pct': `${target}%` }} />
           <div className="gp-slider-labels"><span>2</span><span>50</span><span>98</span></div>
         </div>
 
-        {/* Stats */}
         <div className="gp-stats">
           <div className="gp-stat"><span>WIN CHANCE</span><strong>{chance}%</strong></div>
           <div className="gp-stat"><span>MULTIPLIER</span><strong>{multiplier}×</strong></div>
           <div className="gp-stat"><span>PAYOUT</span><strong>{payout} 🪙</strong></div>
         </div>
 
-        {/* Bet row */}
         <div className="gp-bet-row">
           <span className="gp-coin-icon">🪙</span>
           <input className="gp-bet-input" type="number" value={bet} min={1} onChange={e => setBet(Math.max(1, +e.target.value))} />
@@ -79,7 +73,6 @@ export default function DiceGame({ user, onCoinsUpdate }) {
           <button className="gp-adj gp-adj-2x" onClick={() => setBet(bet * 2)}>2×</button>
         </div>
 
-        {/* Play button */}
         <button className="gp-play-btn gp-play-dice" onClick={roll} disabled={rolling}>
           {rolling ? <><span className="gp-spin">🎲</span> ROLLING…</> : '🎲  ROLL DICE'}
         </button>
@@ -98,8 +91,6 @@ export default function DiceGame({ user, onCoinsUpdate }) {
 
 const sharedStyles = `
   .gp-wrap { display: flex; flex-direction: column; gap: 0; }
-
-  /* Result box */
   .gp-result-box {
     min-height: 160px;
     display: flex;
@@ -120,11 +111,7 @@ const sharedStyles = `
   .gp-err { color: #ef4444; font-weight: 700; font-size: 0.95rem; }
   .gp-idle-icon { font-size: 3.5rem; margin-bottom: 8px; }
   .gp-idle-text { color: rgba(255,255,255,0.35); font-size: 0.9rem; font-weight: 600; letter-spacing: 0.5px; }
-
-  /* Controls */
   .gp-controls { display: flex; flex-direction: column; gap: 20px; padding: 28px 24px; }
-
-  /* Direction row */
   .gp-dir-row { display: flex; align-items: center; gap: 12px; }
   .gp-dir {
     flex: 1;
@@ -141,13 +128,9 @@ const sharedStyles = `
   }
   .gp-dir:hover { border-color: rgba(255,255,255,0.3); color: #fff; }
   .gp-target-num { font-size: 2.5rem; font-weight: 900; color: #fff; min-width: 70px; text-align: center; }
-
-  /* Slider */
   .gp-slider-wrap { display: flex; flex-direction: column; gap: 6px; }
   .gp-slider { width: 100%; height: 6px; cursor: pointer; border-radius: 3px; }
   .gp-slider-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: rgba(255,255,255,0.25); font-weight: 700; }
-
-  /* Stats */
   .gp-stats {
     display: grid;
     grid-template-columns: repeat(3,1fr);
@@ -165,8 +148,6 @@ const sharedStyles = `
   }
   .gp-stat span { font-size: 0.6rem; font-weight: 800; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; }
   .gp-stat strong { font-size: 1.1rem; font-weight: 900; color: #fff; }
-
-  /* Bet row */
   .gp-bet-row {
     display: flex;
     align-items: center;
@@ -201,8 +182,6 @@ const sharedStyles = `
   .gp-adj:hover { background: rgba(255,255,255,0.1); color: #fff; }
   .gp-adj-2x { border-color: rgba(0,242,255,0.2); color: #00f2ff; background: rgba(0,242,255,0.05); }
   .gp-adj-2x:hover { background: rgba(0,242,255,0.12); }
-
-  /* Play button */
   .gp-play-btn {
     width: 100%;
     padding: 18px;
@@ -217,11 +196,7 @@ const sharedStyles = `
   }
   .gp-play-btn:hover:not(:disabled) { transform: translateY(-2px); }
   .gp-play-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-  /* Spin */
   .gp-spin { display: inline-block; animation: gp-spin 0.6s linear infinite; }
   @keyframes gp-spin { to { transform: rotate(360deg); } }
-
-  /* Result animations */
   @keyframes gp-pop { 0% { transform: scale(0.8); opacity: 0; } 60% { transform: scale(1.08); } 100% { transform: scale(1); opacity: 1; } }
 `;

@@ -85,7 +85,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
       <div className="game-page-container">
         <div className="game-cabinet" style={{ '--gc': game.color }}>
           
-          {/* ── HEADER ── */}
           <header className="cabinet-header">
             <div className="cabinet-header-left">
               <Link href="/games" className="btn-back">
@@ -110,7 +109,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
             </div>
           </header>
 
-          {/* ── GAME BODY ── */}
           <div className="cabinet-body">
             {user ? (
               <GameComponent user={user} onCoinsUpdate={handleCoinsUpdate} />
@@ -124,7 +122,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
             )}
           </div>
 
-          {/* ── FOOTER ── */}
           <footer className="cabinet-footer">
             <div className="footer-stat"><span>🛡️</span> Provably Fair</div>
             <div className="footer-stat"><span>⚡</span> Instant Payouts</div>
@@ -161,7 +158,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* ── HEADER ── */
         .cabinet-header {
           display: flex;
           align-items: center;
@@ -231,7 +227,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
         .wallet-coin { font-size: 1.2rem; }
         .wallet-num { font-size: 1.2rem; font-weight: 900; color: #f59e0b; }
 
-        /* ── BODY ── */
         .cabinet-body {
           min-height: 400px;
         }
@@ -261,7 +256,6 @@ export default function SingleGamePage({ params: paramsPromise }) {
         }
         .prompt-btn:hover { transform: scale(1.05); box-shadow: 0 15px 40px rgba(83,252,24,0.5); }
 
-        /* ── FOOTER ── */
         .cabinet-footer {
           display: flex;
           align-items: center;

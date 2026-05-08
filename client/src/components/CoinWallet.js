@@ -23,7 +23,6 @@ export default function CoinWallet({ user, onCoinsUpdate }) {
           setCanClaim(data.canClaim);
           setNextClaimAt(data.nextClaimAt);
           
-          // Only trigger parent update if coins actually changed to prevent loops
           if (onCoinsUpdate && data.coins !== user.coins) {
             onCoinsUpdate(data.coins);
           }
@@ -32,9 +31,8 @@ export default function CoinWallet({ user, onCoinsUpdate }) {
     };
 
     fetchBalance();
-  }, [user?.username]); // ONLY run when the username changes, not on every render
+  }, [user?.username]);
 
-  // Timer logic
   useEffect(() => {
     if (!nextClaimAt || canClaim) { setTimeLeft(''); return; }
     const interval = setInterval(() => {
@@ -118,7 +116,7 @@ export default function CoinWallet({ user, onCoinsUpdate }) {
           transition: 0.3s;
         }
         .claim-btn-mini:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(83,252,24,0.4); }
-        .claim-timer-mini { font-size: 0.75rem; color: var(--text-secondary); font-weight: 800; }
+        .claim-timer-mini { font-size: 0.75rem; color: rgba(255,255,255,0.5); font-weight: 800; }
         .claim-popup {
           position: absolute;
           top: -30px;

@@ -22,7 +22,6 @@ export default function BonusesPage() {
       } catch (e) {}
     }
 
-    // Check for OAuth completion
     const params = new URLSearchParams(window.location.search);
     const justLoggedOut = sessionStorage.getItem('just_logged_out');
 
@@ -134,7 +133,6 @@ export default function BonusesPage() {
         </div>
       </footer>
 
-      {/* Kick Login Modal */}
       <AnimatePresence>
         {showLoginModal && (
           <motion.div 

@@ -7,8 +7,8 @@ const EGGS_PER_LEVEL = 3;
 
 export default function DragonTowerGame({ user, onCoinsUpdate }) {
   const [bet, setBet] = useState(10);
-  const [currentLevel, setCurrentLevel] = useState(0); // 0 = not started, 1-5 = active
-  const [picks, setPicks] = useState([]); // [{level, pick, hitBad}]
+  const [currentLevel, setCurrentLevel] = useState(0);
+  const [picks, setPicks] = useState([]);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +50,6 @@ export default function DragonTowerGame({ user, onCoinsUpdate }) {
 
   return (
     <div className="gp-wrap">
-      {/* Tower Display */}
       <div className="tower-display">
         {currentLevel === 0 && !result && (
           <div className="tower-idle">
@@ -99,7 +98,6 @@ export default function DragonTowerGame({ user, onCoinsUpdate }) {
         )}
       </div>
 
-      {/* Controls */}
       <div className="gp-controls">
         {currentLevel === 0 ? (
           <>

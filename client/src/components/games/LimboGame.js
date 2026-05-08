@@ -44,7 +44,6 @@ export default function LimboGame({ user, onCoinsUpdate }) {
 
   return (
     <div className="gp-wrap">
-      {/* Rocket display */}
       <div className={`limbo-display ${win ? 'limbo-win' : loss ? 'limbo-loss' : playing ? 'limbo-live' : ''}`}>
         <div className="limbo-rocket">🚀</div>
         <div className={`limbo-num ${win ? 'lnum-win' : loss ? 'lnum-loss' : ''}`}>{displayVal}</div>
@@ -55,9 +54,7 @@ export default function LimboGame({ user, onCoinsUpdate }) {
         {!playing && !result && <div className="limbo-hint">Target: ≥ {targetMultiplier}×</div>}
       </div>
 
-      {/* Controls */}
       <div className="gp-controls">
-        {/* Target multiplier */}
         <div className="limbo-target-section">
           <label className="gp-label">TARGET MULTIPLIER</label>
           <div className="limbo-mult-row">
@@ -72,7 +69,6 @@ export default function LimboGame({ user, onCoinsUpdate }) {
             />
             <button className="limbo-pm" onClick={() => setTarget(t => parseFloat((t + 0.5).toFixed(2)))}>+</button>
           </div>
-          {/* Quick presets */}
           <div className="limbo-presets">
             {[1.5, 2, 5, 10, 25].map(v => (
               <button key={v} className={`limbo-preset ${targetMultiplier === v ? 'limbo-preset-active' : ''}`} onClick={() => setTarget(v)}>{v}×</button>
@@ -80,14 +76,12 @@ export default function LimboGame({ user, onCoinsUpdate }) {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="gp-stats">
           <div className="gp-stat"><span>WIN CHANCE</span><strong>{winChance}%</strong></div>
           <div className="gp-stat"><span>MULTIPLIER</span><strong>{targetMultiplier}×</strong></div>
           <div className="gp-stat"><span>PAYOUT</span><strong>{payout} 🪙</strong></div>
         </div>
 
-        {/* Bet row */}
         <div className="gp-bet-row">
           <span className="gp-coin-icon">🪙</span>
           <input className="gp-bet-input" type="number" value={bet} min={1} onChange={e => setBet(Math.max(1, +e.target.value))} />
@@ -102,7 +96,6 @@ export default function LimboGame({ user, onCoinsUpdate }) {
 
       <style jsx>{`
         ${sharedStyles}
-        /* Limbo display */
         .limbo-display {
           min-height: 200px;
           display: flex;
@@ -132,7 +125,6 @@ export default function LimboGame({ user, onCoinsUpdate }) {
         .limbo-verdict { font-size: 1rem; font-weight: 800; letter-spacing: 1.5px; color: #fff; }
         .limbo-hint    { font-size: 0.8rem; color: rgba(255,255,255,0.25); font-weight: 700; letter-spacing: 1px; }
 
-        /* Target multiplier */
         .limbo-target-section { display: flex; flex-direction: column; gap: 10px; }
         .gp-label { font-size: 0.65rem; font-weight: 900; letter-spacing: 2px; color: rgba(255,255,255,0.3); }
         .limbo-mult-row { display: flex; align-items: center; gap: 10px; }

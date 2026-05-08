@@ -8,7 +8,7 @@ export default function MinesGame({ user, onCoinsUpdate }) {
   const [mineCount, setMineCount] = useState(5);
   const [bet, setBet] = useState(10);
   const [gameActive, setGameActive] = useState(false);
-  const [revealed, setRevealed] = useState([]); // array of {index, safe}
+  const [revealed, setRevealed] = useState([]);
   const [result, setResult] = useState(null);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -55,7 +55,6 @@ export default function MinesGame({ user, onCoinsUpdate }) {
 
   return (
     <div className="gp-wrap">
-      {/* Game Display */}
       <div className="mines-display">
         {!gameActive && !result && (
           <div className="mines-idle">
@@ -91,7 +90,6 @@ export default function MinesGame({ user, onCoinsUpdate }) {
         )}
       </div>
 
-      {/* Controls */}
       <div className="gp-controls">
         {!gameActive ? (
           <>

@@ -38,7 +38,6 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
 
   return (
     <div className="gp-wrap">
-      {/* Chicken Grid Display */}
       <div className="chicken-display">
         <div className="chicken-grid">
           {CHICKEN_NAMES.map((name, i) => {
@@ -76,7 +75,6 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
         )}
       </div>
 
-      {/* Controls */}
       <div className="gp-controls">
         {!result ? (
           <>
