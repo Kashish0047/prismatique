@@ -119,7 +119,14 @@ body {
   transition: 0.3s;
 }
 
+.mobile-only {
+  display: none !important;
+}
+
 @media (max-width: 992px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+  
   .nav-toggle { display: flex; }
   .nav-menu {
     position: fixed;
@@ -2643,7 +2650,87 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
   font-weight: 900;
 }
 
+/* ==========================================================================
+   RESPONSIVE DESIGN (GLOBAL)
+   ========================================================================== */
+
+/* TABLET (max 1024px) */
+@media (max-width: 1024px) {
+  .hero-content h1 { font-size: 3.5rem; }
+  .promo-grid { grid-template-columns: 1fr; }
+  .promo-item { max-width: 100%; height: auto; min-height: 300px; }
+  .podium-item { width: 100%; max-width: 100%; flex-direction: column; text-align: center; gap: 10px; }
+  .podium-item.first { max-width: 100%; }
+  .podium-name, .podium-value, .podium-rank-badge { margin: 0; text-align: center; }
+  
+  .bonus-grid { grid-template-columns: repeat(2, 1fr); }
+  
+  .game-layout { flex-direction: column; }
+  .betting-controls { width: 100%; max-width: 100%; }
+}
+
+/* MOBILE (max 768px) */
 @media (max-width: 768px) {
-  .flip-card { height: 400px; }
-  .raffle-prize-large { font-size: 1.8rem; }
+  /* Navbar */
+  .nav-container { flex-direction: row; justify-content: space-between; align-items: center; gap: 0; }
+  .nav-right { flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+  .user-profile { gap: 10px; flex-wrap: wrap; justify-content: center; }
+  
+  /* Hero */
+  .hero-content h1 { font-size: 2.2rem; white-space: normal; }
+  .hero-description { font-size: 1rem; padding: 0 10px; }
+  .hero-stats { flex-direction: column; gap: 15px; align-items: center; }
+  
+  /* Promos / Games / Bonuses */
+  .bonus-grid { grid-template-columns: 1fr; }
+  .game-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; }
+  .game-card { height: 220px; }
+  
+  /* Raffles */
+  .raffle-grid { grid-template-columns: 1fr; }
+  .flip-card { height: 350px; }
+  .raffle-prize-large { font-size: 1.5rem; }
+  
+  /* Tables / Feed / Leaderboard */
+  .activity-feed { overflow-x: auto; white-space: nowrap; padding-bottom: 10px; }
+  .feed-table th, .feed-table td { padding: 12px 10px; font-size: 0.8rem; }
+  .leaderboard-row { grid-template-columns: 30px 1fr; gap: 15px; padding: 15px; }
+  .row-xp { grid-column: 1 / -1; }
+  .row-wager { grid-column: 1 / -1; text-align: left; font-size: 1.1rem; }
+  
+  /* Admin Dashboard (if inside globals, else styled-jsx) */
+  .admin-dashboard-container { flex-direction: column; overflow-y: auto; }
+  .admin-sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 20px; height: auto; }
+  .admin-nav { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .admin-main { overflow-y: visible; }
+  .admin-table-wrapper { overflow-x: auto; }
+  .admin-header { flex-direction: column; gap: 15px; text-align: center; }
+  
+  /* Footer */
+  .footer-content { grid-template-columns: 1fr; text-align: center; gap: 30px; }
+  .footer-links { align-items: center; }
+}
+
+/* SMALL MOBILE (max 480px) */
+@media (max-width: 480px) {
+  .hero-content h1 { font-size: 1.8rem; }
+  .nav-logo-float { height: 35px; }
+  .auth-btn, .action-btn { font-size: 0.8rem; padding: 8px 15px; }
+  .balance-display { padding: 6px 12px; font-size: 0.85rem; }
+  
+  .game-grid { grid-template-columns: 1fr; }
+  .game-card { height: 200px; }
+  
+  .leaderboard-row { grid-template-columns: 1fr; text-align: center; gap: 15px; padding: 15px; }
+  .row-user { justify-content: center; }
+  .row-wager { text-align: center; }
+
+  .admin-form .form-row { grid-template-columns: 1fr; }
+  
+  .canvas-container { height: 300px !important; }
+}
+
+/* Force Toastify to be above everything */
+.Toastify__toast-container {
+  z-index: 999999 !important;
 }

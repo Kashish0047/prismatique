@@ -6,6 +6,20 @@ import { toast } from 'react-toastify';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+const ConfirmDelete = ({ onConfirm, onCancel, type }) => (
+  <div className="confirm-toast">
+    <div className="confirm-toast-header">
+      <span className="warning-icon">⚠️</span>
+      <h4>DELETE {type.toUpperCase()}?</h4>
+    </div>
+    <p>This action is permanent and cannot be undone.</p>
+    <div className="confirm-actions">
+      <button className="confirm-no" onClick={onCancel}>CANCEL</button>
+      <button className="confirm-yes" onClick={onConfirm}>YES, DELETE</button>
+    </div>
+  </div>
+);
+
 export default function AdminDashboard({ onLogout }) {
   const [activeTab, setActiveTab] = useState('raffles');
   const [raffles, setRaffles] = useState([]);
@@ -24,16 +38,6 @@ export default function AdminDashboard({ onLogout }) {
   });
 
   const [viewingParticipants, setViewingParticipants] = useState(null);
-
-  const ConfirmDelete = ({ onConfirm, onCancel, type }) => (
-    <div className="confirm-toast">
-      <p>Are you sure you want to delete this {type}?</p>
-      <div className="confirm-actions">
-        <button className="confirm-yes" onClick={() => { onConfirm(); onCancel(); }}>YES, DELETE</button>
-        <button className="confirm-no" onClick={onCancel}>CANCEL</button>
-      </div>
-    </div>
-  );
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('prism_admin_token') : '';
 
@@ -94,12 +98,18 @@ export default function AdminDashboard({ onLogout }) {
         onConfirm={async () => {
           try {
             const endpoint = type === 'raffle' ? 'raffles' : 'giveaways';
-            await axios.delete(`${API}/admin/${endpoint}/${id}`, { headers: { token } });
-            toast.dismiss();
-            toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`);
-            fetchAllData();
+            const adminToken = localStorage.getItem('prism_admin_token');
+            const res = await axios.delete(`${API}/admin/${endpoint}/${id}`, { 
+              headers: { token: adminToken } 
+            });
+            
+            if (res.data.success) {
+              toast.dismiss();
+              toast.success(`${type.toUpperCase()} DELETED SUCCESSFULLY`);
+              fetchAllData();
+            }
           } catch (err) {
-            toast.error(`Error deleting ${type}`);
+            toast.error(`Failed to delete ${type}`);
           }
         }}
         onCancel={closeToast}
@@ -107,7 +117,6 @@ export default function AdminDashboard({ onLogout }) {
     ), { 
       autoClose: false, 
       closeOnClick: false,
-      draggable: false,
       position: "top-center"
     });
   };
@@ -368,11 +377,47 @@ export default function AdminDashboard({ onLogout }) {
         .p-id-tag { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; color: #94a3b8; }
         .p-id-cell code { color: #00f2ff; font-family: monospace; font-weight: 700; }
 
-        .confirm-toast p { font-size: 0.9rem; font-weight: 700; margin-bottom: 15px; color: #fff; }
-        .confirm-actions { display: flex; gap: 10px; }
-        .confirm-yes { background: #ff4444; color: #fff; border: none; padding: 8px 15px; border-radius: 8px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: 0.3s; }
-        .confirm-no { background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 15px; border-radius: 8px; font-weight: 800; font-size: 0.75rem; cursor: pointer; }
-        .confirm-yes:hover { background: #cc0000; transform: scale(1.05); }
+        .confirm-toast { display: flex; flex-direction: column; gap: 10px; padding: 5px 0; }
+        .confirm-toast-header { display: flex; align-items: center; gap: 10px; }
+        .warning-icon { font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255, 68, 68, 0.5)); }
+        .confirm-toast h4 { font-size: 1.1rem; font-weight: 900; color: #ff4444; margin: 0; letter-spacing: 1px; }
+        .confirm-toast p { font-size: 0.85rem; font-weight: 600; color: #94a3b8; margin: 0 0 15px 0; line-height: 1.4; }
+        .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 5px; }
+        .confirm-yes { background: linear-gradient(135deg, rgba(255, 68, 68, 0.8), rgba(204, 0, 0, 0.8)); color: #fff; border: 1px solid rgba(255, 100, 100, 0.4); padding: 10px; border-radius: 8px; font-weight: 900; font-size: 0.75rem; letter-spacing: 1px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255, 68, 68, 0.2); text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        .confirm-no { background: rgba(255, 255, 255, 0.03); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.1); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 0.75rem; letter-spacing: 1px; cursor: pointer; transition: all 0.3s ease; backdrop-filter: blur(5px); }
+        
+        .confirm-yes:hover { background: linear-gradient(135deg, #ff4444, #cc0000); box-shadow: 0 6px 20px rgba(255, 68, 68, 0.5); transform: translateY(-2px); border-color: #ff6666; }
+        .confirm-no:hover { background: rgba(255, 255, 255, 0.08); color: #fff; border-color: rgba(255, 255, 255, 0.25); transform: translateY(-2px); }
+        
+        .confirm-yes:active, .confirm-no:active { transform: translateY(1px); box-shadow: none; }
+
+        @media (max-width: 1024px) {
+          .admin-sidebar { width: 220px; padding: 20px; }
+          .admin-header { padding: 20px; }
+          .admin-content { padding: 20px; }
+        }
+
+        @media (max-width: 768px) {
+          .admin-dashboard-container { flex-direction: column; overflow-y: auto; }
+          .admin-sidebar { width: 100%; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 15px; height: auto; }
+          .admin-logo { margin-bottom: 20px; justify-content: center; }
+          .admin-nav { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 5px; }
+          .admin-nav-item { padding: 10px 15px; font-size: 0.8rem; }
+          .admin-logout-btn { margin-top: 15px; }
+          .admin-main { overflow-y: visible; }
+          .admin-table-wrapper { overflow-x: auto; border-radius: 10px; }
+          .admin-header { flex-direction: column; gap: 15px; text-align: center; }
+          .admin-modal { padding: 25px; margin: 10px; }
+          .form-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+          .admin-table th, .admin-table td { padding: 10px; font-size: 0.75rem; }
+          .action-btn { font-size: 1rem; }
+          .p-badge, .view-list-btn { padding: 4px 8px; font-size: 0.65rem; }
+          .admin-modal h3 { font-size: 1.2rem; }
+          .modal-actions { grid-template-columns: 1fr; }
+        }
       `}</style>
     </div>
   );
