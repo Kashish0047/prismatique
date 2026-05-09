@@ -18,10 +18,22 @@ export default function AdminDashboard({ onLogout }) {
   const [newRaffle, setNewRaffle] = useState({
     title: '', prize: '', description: '', requirement: '', status: 'active', maxEntries: 1000
   });
-  
+
   const [newGiveaway, setNewGiveaway] = useState({
     title: '', prize: '', description: '', code: '', status: 'active'
   });
+
+  const [viewingParticipants, setViewingParticipants] = useState(null);
+
+  const ConfirmDelete = ({ onConfirm, onCancel, type }) => (
+    <div className="confirm-toast">
+      <p>Are you sure you want to delete this {type}?</p>
+      <div className="confirm-actions">
+        <button className="confirm-yes" onClick={() => { onConfirm(); onCancel(); }}>YES, DELETE</button>
+        <button className="confirm-no" onClick={onCancel}>CANCEL</button>
+      </div>
+    </div>
+  );
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('prism_admin_token') : '';
 
@@ -75,16 +87,29 @@ export default function AdminDashboard({ onLogout }) {
     }
   };
 
-  const handleDelete = async (id, type) => {
-    if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
-    try {
-      const endpoint = type === 'raffle' ? 'raffles' : 'giveaways';
-      await axios.delete(`${API}/admin/${endpoint}/${id}`, { headers: { token } });
-      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted`);
-      fetchAllData();
-    } catch (err) {
-      toast.error(`Error deleting ${type}`);
-    }
+  const handleDelete = (id, type) => {
+    toast(({ closeToast }) => (
+      <ConfirmDelete 
+        type={type}
+        onConfirm={async () => {
+          try {
+            const endpoint = type === 'raffle' ? 'raffles' : 'giveaways';
+            await axios.delete(`${API}/admin/${endpoint}/${id}`, { headers: { token } });
+            toast.dismiss();
+            toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`);
+            fetchAllData();
+          } catch (err) {
+            toast.error(`Error deleting ${type}`);
+          }
+        }}
+        onCancel={closeToast}
+      />
+    ), { 
+      autoClose: false, 
+      closeOnClick: false,
+      draggable: false,
+      position: "top-center"
+    });
   };
 
   return (
@@ -136,9 +161,12 @@ export default function AdminDashboard({ onLogout }) {
                             <td>
                               <div className="participants-preview">
                                 {r.participants && r.participants.length > 0 ? (
-                                  <div className="p-badge" title={r.participants.join(', ')}>
-                                    👤 {r.participants.length} USERS
-                                  </div>
+                                  <button 
+                                    className="view-list-btn" 
+                                    onClick={() => setViewingParticipants({ ...r, type: 'Raffle' })}
+                                  >
+                                    👤 {r.participants.length} VIEW LIST
+                                  </button>
                                 ) : 'None'}
                               </div>
                             </td>
@@ -164,9 +192,12 @@ export default function AdminDashboard({ onLogout }) {
                             <td>
                               <div className="participants-preview">
                                 {g.participants && g.participants.length > 0 ? (
-                                  <div className="p-badge" title={g.participants.join(', ')}>
-                                    👤 {g.participants.length} USERS
-                                  </div>
+                                  <button 
+                                    className="view-list-btn" 
+                                    onClick={() => setViewingParticipants({ ...g, type: 'Giveaway' })}
+                                  >
+                                    👤 {g.participants.length} VIEW LIST
+                                  </button>
                                 ) : 'None'}
                               </div>
                             </td>
@@ -244,6 +275,42 @@ export default function AdminDashboard({ onLogout }) {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {viewingParticipants && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="admin-modal-overlay">
+            <motion.div initial={{ y: 50 }} animate={{ y: 0 }} className="admin-modal glass-panel p-list-modal">
+              <header className="p-list-header">
+                <h3>{viewingParticipants.type.toUpperCase()} PARTICIPANTS</h3>
+                <span className="p-count-badge">{viewingParticipants.participants.length} USERS</span>
+              </header>
+              
+              <div className="p-list-content">
+                <table className="p-list-table">
+                  <thead>
+                    <tr><th>#</th><th>USERNAME / ID</th></tr>
+                  </thead>
+                  <tbody>
+                    {viewingParticipants.participants.map((p, i) => (
+                      <tr key={i}>
+                        <td>{i + 1}</td>
+                        <td className="p-id-cell">
+                          <span className="p-id-tag">USER</span>
+                          <code>{p}</code>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="modal-actions">
+                <button className="confirm-btn" style={{ width: '100%' }} onClick={() => setViewingParticipants(null)}>CLOSE LIST</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style jsx>{`
         .admin-dashboard-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #080a0f; z-index: 99999; display: flex; padding: 20px; }
         .admin-dashboard-container { width: 100%; display: flex; overflow: hidden; background: rgba(17, 20, 27, 0.95) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; }
@@ -286,6 +353,26 @@ export default function AdminDashboard({ onLogout }) {
         
         .p-badge { background: rgba(0, 242, 255, 0.1); color: #00f2ff; padding: 5px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; cursor: help; border: 1px solid rgba(0, 242, 255, 0.2); }
         .participants-preview { display: flex; align-items: center; }
+
+        .view-list-btn { background: rgba(0, 242, 255, 0.1); color: #00f2ff; padding: 6px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; cursor: pointer; border: 1px solid rgba(0, 242, 255, 0.2); transition: 0.3s; }
+        .view-list-btn:hover { background: #00f2ff; color: #000; }
+
+        .p-list-modal { max-width: 600px !important; }
+        .p-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .p-count-badge { background: #53fc18; color: #000; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 900; }
+        .p-list-content { max-height: 400px; overflow-y: auto; margin-bottom: 20px; border-radius: 12px; background: rgba(0,0,0,0.2); }
+        .p-list-table { width: 100%; border-collapse: collapse; }
+        .p-list-table th { padding: 12px 20px; text-align: left; font-size: 0.7rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .p-list-table td { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 0.9rem; }
+        .p-id-cell { display: flex; align-items: center; gap: 15px; }
+        .p-id-tag { background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; font-size: 0.6rem; font-weight: 900; color: #94a3b8; }
+        .p-id-cell code { color: #00f2ff; font-family: monospace; font-weight: 700; }
+
+        .confirm-toast p { font-size: 0.9rem; font-weight: 700; margin-bottom: 15px; color: #fff; }
+        .confirm-actions { display: flex; gap: 10px; }
+        .confirm-yes { background: #ff4444; color: #fff; border: none; padding: 8px 15px; border-radius: 8px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: 0.3s; }
+        .confirm-no { background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 15px; border-radius: 8px; font-weight: 800; font-size: 0.75rem; cursor: pointer; }
+        .confirm-yes:hover { background: #cc0000; transform: scale(1.05); }
       `}</style>
     </div>
   );
