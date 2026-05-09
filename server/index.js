@@ -13,6 +13,8 @@ const User = require('./models/User');
 const Player = require('./models/Player');
 const Activity = require('./models/Activity');
 const GameHistory = require('./models/GameHistory');
+const Raffle = require('./models/Raffle');
+const Giveaway = require('./models/Giveaway');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -134,6 +136,170 @@ app.get('/api/activity', async (req, res) => {
     res.json({ success: true, data: formatted });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching activity" });
+  }
+});
+
+// --- ADMIN & RAFFLE ROUTES ---
+
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body;
+  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+    res.json({ success: true, token: 'prism-admin-v1' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+app.get('/api/raffles', async (req, res) => {
+  try {
+    const raffles = await Raffle.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: raffles });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching raffles" });
+  }
+});
+
+app.post('/api/admin/raffles', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const raffle = new Raffle(req.body);
+    await raffle.save();
+    res.json({ success: true, data: raffle });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating raffle" });
+  }
+});
+
+app.put('/api/admin/raffles/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const raffle = await Raffle.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: raffle });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating raffle" });
+  }
+});
+
+app.delete('/api/admin/raffles/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    await Raffle.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting raffle" });
+  }
+});
+
+app.get('/api/giveaways', async (req, res) => {
+  try {
+    const giveaways = await Giveaway.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: giveaways });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching giveaways" });
+  }
+});
+
+app.post('/api/admin/giveaways', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const giveaway = new Giveaway(req.body);
+    await giveaway.save();
+    res.json({ success: true, data: giveaway });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating giveaway" });
+  }
+});
+
+app.put('/api/admin/giveaways/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const giveaway = await Giveaway.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: giveaway });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating giveaway" });
+  }
+});
+
+app.delete('/api/admin/giveaways/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    await Giveaway.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting giveaway" });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching users" });
+  }
+});
+
+app.post('/api/raffles/:id/enter', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Username required" });
+
+  try {
+    const raffle = await Raffle.findById(req.params.id);
+    if (!raffle) return res.status(404).json({ success: false, message: "Raffle not found" });
+    if (raffle.status !== 'active') return res.status(400).json({ success: false, message: "Raffle is not active" });
+
+    if (raffle.participants.includes(username)) {
+      return res.status(400).json({ success: false, message: "You are already registered!" });
+    }
+
+    if (raffle.entries >= raffle.maxEntries) {
+      return res.status(400).json({ success: false, message: "Raffle is full!" });
+    }
+
+    raffle.participants.push(username);
+    raffle.entries = raffle.participants.length;
+    await raffle.save();
+
+    res.json({ success: true, message: "Successfully registered for raffle!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error entering raffle" });
+  }
+});
+
+app.post('/api/giveaways/:id/enter', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Username required" });
+
+  try {
+    const giveaway = await Giveaway.findById(req.params.id);
+    if (!giveaway) return res.status(404).json({ success: false, message: "Giveaway not found" });
+    if (giveaway.status !== 'active') return res.status(400).json({ success: false, message: "Giveaway is not active" });
+
+    if (giveaway.participants.includes(username)) {
+      return res.status(400).json({ success: false, message: "You have already claimed this giveaway!" });
+    }
+
+    giveaway.participants.push(username);
+    await giveaway.save();
+
+    res.json({ success: true, message: "Giveaway successfully claimed!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error entering giveaway" });
   }
 });
 

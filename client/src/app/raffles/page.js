@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import Navbar from '@/components/Navbar';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -8,6 +9,8 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 export default function RafflesPage() {
   const [user, setUser] = useState(null);
   const [coins, setCoins] = useState(0);
+  const [raffles, setRaffles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('prism_auth_v2');
@@ -18,6 +21,34 @@ export default function RafflesPage() {
         setCoins(parsed.coins || 0);
       } catch (e) {}
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = window.location.pathname;
+    }
+
+    const fetchRaffles = async () => {
+      try {
+        const res = await fetch(`${API}/raffles`);
+        const data = await res.json();
+        if (data.success) setRaffles(data.data);
+      } catch (e) {} finally {
+        setLoading(false);
+      }
+    };
+    fetchRaffles();
   }, []);
 
   const handleLogout = () => {
@@ -26,6 +57,33 @@ export default function RafflesPage() {
     setUser(null);
     setCoins(0);
     window.location.replace(window.location.pathname);
+  };
+
+  const handleEntry = async (id) => {
+    if (!user) {
+      toast.error('Log in first to enter!', { position: 'top-center' });
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/raffles/${id}/enter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        // Refresh data
+        const refreshRes = await fetch(`${API}/raffles`);
+        const refreshData = await refreshRes.json();
+        if (refreshData.success) setRaffles(refreshData.data);
+      } else {
+        toast.warning(data.message);
+      }
+    } catch (err) {
+      toast.error('Failed to register. Please try again.');
+    }
   };
 
   const startLogin = () => {
@@ -54,26 +112,39 @@ export default function RafflesPage() {
           </motion.div>
 
           <div className="raffle-grid">
-            <motion.div whileHover={{ y: -5 }} className="raffle-card active-raffle">
-              <div className="raffle-badge pulse-badge">LIVE NOW</div>
-              <div className="raffle-prize">$500 KICK COMMUNITY DROP</div>
-              <p>Entry requires 500 Coins wagered today.</p>
-              <div className="raffle-progress">
-                <div className="progress-bar"><div className="progress-fill" style={{width: '75%'}}></div></div>
-                <div className="progress-labels"><span>750/1000 ENTRIES</span><span>ENDS IN 4H</span></div>
-              </div>
-              <button className="raffle-btn disabled">ENTER RAFFLE (LOCKED)</button>
-            </motion.div>
-
-            <motion.div whileHover={{ y: -5 }} className="raffle-card">
-              <div className="raffle-badge upcoming">UPCOMING</div>
-              <div className="raffle-prize">WEEKLY $2000 MEGA DRAW</div>
-              <p>Top 50 on the wager leaderboard automatically entered.</p>
-              <div className="raffle-progress">
-                <div className="progress-labels" style={{justifyContent: 'center'}}><span>STARTS IN 2 DAYS</span></div>
-              </div>
-              <button className="raffle-btn outline">VIEW REQUIREMENTS</button>
-            </motion.div>
+            {loading ? (
+              <div className="text-center py-20 w-full opacity-50">LOADING RAFFLES...</div>
+            ) : raffles.length > 0 ? (
+              raffles.map((raffle) => (
+                <motion.div key={raffle._id} whileHover={{ y: -5 }} className={`raffle-card ${raffle.status === 'active' ? 'active-raffle' : ''}`}>
+                  <div className={`raffle-badge ${raffle.status === 'active' ? 'pulse-badge' : raffle.status === 'upcoming' ? 'upcoming' : ''}`}>
+                    {raffle.status === 'active' ? 'LIVE NOW' : raffle.status.toUpperCase()}
+                  </div>
+                  <div className="raffle-prize">{raffle.prize} {raffle.title}</div>
+                  <p>{raffle.requirement || 'No specific requirements.'}</p>
+                  <div className="raffle-progress">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{width: `${Math.min((raffle.entries / raffle.maxEntries) * 100, 100)}%`}}
+                      ></div>
+                    </div>
+                    <div className="progress-labels">
+                      <span>{raffle.entries}/{raffle.maxEntries} ENTRIES</span>
+                      <span>{raffle.status === 'active' ? 'ENDS SOON' : 'UPCOMING'}</span>
+                    </div>
+                  </div>
+                  <button 
+                    className={`raffle-btn ${raffle.status === 'active' ? '' : 'outline'}`}
+                    onClick={() => handleEntry(raffle._id)}
+                  >
+                    {raffle.status === 'active' ? 'ENTER RAFFLE' : 'VIEW DETAILS'}
+                  </button>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-20 w-full opacity-50">NO RAFFLES AVAILABLE AT THE MOMENT.</div>
+            )}
           </div>
         </div>
       </section>

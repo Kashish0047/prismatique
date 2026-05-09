@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import Navbar from '@/components/Navbar';
 import RewardsSection from '@/components/RewardsSection';
 import FAQ from '@/components/FAQ';
@@ -29,6 +30,8 @@ export default function Home() {
     loading: true
   });
   const [activities, setActivities] = useState([]);
+  const [raffles, setRaffles] = useState([]);
+  const [giveaways, setGiveaways] = useState([]);
 
   useEffect(() => {
     const savedUser = localStorage.getItem(STORAGE_KEY);
@@ -46,6 +49,7 @@ export default function Home() {
   useEffect(() => {
     fetchStreamInfo();
     fetchActivities();
+    fetchRafflesAndGiveaways();
     const streamInterval = setInterval(fetchStreamInfo, 300000);
     const activityInterval = setInterval(fetchActivities, 30000);
     return () => {
@@ -105,9 +109,50 @@ export default function Home() {
     }
   };
 
+  const fetchRafflesAndGiveaways = async () => {
+    try {
+      const rRes = await fetch(`${API}/raffles`);
+      const rData = await rRes.json();
+      if (rData.success) setRaffles(rData.data);
+
+      const gRes = await fetch(`${API}/giveaways`);
+      const gData = await gRes.json();
+      if (gData.success) setGiveaways(gData.data);
+    } catch (e) {}
+  };
+
   const startLogin = () => {
     sessionStorage.removeItem('just_logged_out');
     window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
+  };
+
+  const handleEntry = async (e, id, type) => {
+    e.preventDefault();
+    if (!user) {
+      toast.error('Log in first to enter raffles or giveaways!', {
+        position: "top-center",
+        autoClose: 3000
+      });
+      return;
+    }
+
+    try {
+      const endpoint = type === 'raffle' ? 'raffles' : 'giveaways';
+      const res = await fetch(`${API}/${endpoint}/${id}/enter`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        fetchRafflesAndGiveaways(); // Refresh data
+      } else {
+        toast.warning(data.message);
+      }
+    } catch (err) {
+      toast.error('Failed to register. Please try again.');
+    }
   };
 
   const confirmLogin = async () => {
@@ -186,16 +231,16 @@ export default function Home() {
         <video autoPlay muted loop id="hero-video">
           <source src="/BG.mp4" type="video/mp4" />
         </video>
-        <div className="hero-content container">
+        <div className="hero-content">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            PRISMATIQUE <span className="highlight-blue">ELITE</span>
+            WELCOME TO <span className="highlight-blue">PRISMATIQUE BONUSES</span>
           </motion.h1>
           <p className="hero-description">
-            Discover elite casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
+            Discover premium casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
           </p>
           <div className="hero-stats">
             <div className="stat-pill">
@@ -285,30 +330,77 @@ export default function Home() {
         <div className="container" id="giveaways">
           <h2 className="section-title">DAILY <span className="highlight-blue">RAFFLES & GIVEAWAYS</span></h2>
           <div className="raffle-grid">
-            <div className="raffle-card">
-              <div className="raffle-status status-live">LIVE</div>
-              <div className="raffle-icon">💰</div>
-              <h3>WEEKLY WAGER RACE</h3>
-              <div className="raffle-prize">$1,000 PRIZE POOL</div>
-              <p className="raffle-details">Wager on any of our partner casinos to climb the rank and win your share.</p>
-              <button className="raffle-btn">VIEW RANKINGS</button>
-            </div>
-            <div className="raffle-card">
-              <div className="raffle-status">STARTING SOON</div>
-              <div className="raffle-icon">🎁</div>
-              <h3>MONTHLY GIVEAWAY</h3>
-              <div className="raffle-prize">$5,000 IN REWARDS</div>
-              <p className="raffle-details">Join our Discord and Kick community for a chance to win exclusive rewards.</p>
-              <button className="raffle-btn">JOIN DISCORD</button>
-            </div>
-            <div className="raffle-card">
-              <div className="raffle-status status-live">DAILY</div>
-              <div className="raffle-icon">⚡</div>
-              <h3>INSTANT DROPS</h3>
-              <div className="raffle-prize">$50 - $500 DAILY</div>
-              <p className="raffle-details">Watch the stream and be active in chat to receive random balance drops.</p>
-              <button className="raffle-btn">WATCH STREAM</button>
-            </div>
+            {raffles.length > 0 ? raffles.slice(0, 3).map(raffle => (
+              <div className="flip-card" key={raffle._id}>
+                <div className="flip-card-inner">
+                  <div className="flip-card-front">
+                    <div className={`raffle-badge ${raffle.status === 'active' ? 'pulse-badge' : 'upcoming'}`}>
+                      {raffle.status.toUpperCase()}
+                    </div>
+                    <div className="raffle-icon-large">🎟️</div>
+                    <h3 className="raffle-title-large">{raffle.title}</h3>
+                    <div className="raffle-prize-large">{raffle.prize}</div>
+                    <p className="raffle-hint">Hover to Register</p>
+                  </div>
+                  <div className="flip-card-back">
+                    <h3>REQUIREMENTS</h3>
+                    <p className="raffle-req-text">{raffle.requirement || 'No specific requirements. Open for all players.'}</p>
+                    <div className="raffle-meta">
+                      <span><i className="fas fa-users"></i> {raffle.entries}/{raffle.maxEntries}</span>
+                    </div>
+                    <button 
+                      className="register-btn" 
+                      onClick={(e) => handleEntry(e, raffle._id, 'raffle')}
+                    >
+                      REGISTER NOW
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )) : giveaways.length > 0 ? giveaways.slice(0, 3).map(giveaway => (
+              <div className="flip-card" key={giveaway._id}>
+                <div className="flip-card-inner">
+                  <div className="flip-card-front">
+                    <div className={`raffle-badge ${giveaway.status === 'active' ? 'pulse-badge' : 'upcoming'}`}>
+                      {giveaway.status.toUpperCase()}
+                    </div>
+                    <div className="raffle-icon-large">🎁</div>
+                    <h3 className="raffle-title-large">{giveaway.title}</h3>
+                    <div className="raffle-prize-large">{giveaway.prize}</div>
+                    <p className="raffle-hint">Hover to Claim</p>
+                  </div>
+                  <div className="flip-card-back">
+                    <h3>GIVEAWAY INFO</h3>
+                    <p className="raffle-req-text">{giveaway.description || 'Exclusive community giveaway for active members.'}</p>
+                    <div className="giveaway-code-display">
+                      <code>{giveaway.code || 'NO CODE REQ'}</code>
+                    </div>
+                    <button 
+                      className="register-btn" 
+                      onClick={(e) => handleEntry(e, giveaway._id, 'giveaway')}
+                    >
+                      CLAIM NOW
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) ) : (
+              <div className="flip-card">
+                <div className="flip-card-inner">
+                  <div className="flip-card-front">
+                    <div className="raffle-badge pulse-badge">DAILY</div>
+                    <div className="raffle-icon-large">⚡</div>
+                    <h3 className="raffle-title-large">STAY TUNED</h3>
+                    <div className="raffle-prize-large">NEW DROPS SOON</div>
+                  </div>
+                  <div className="flip-card-back">
+                    <h3>COMING SOON</h3>
+                    <p>We are preparing new exclusive rewards for you.</p>
+                    <button className="register-btn">NOTIFY ME</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

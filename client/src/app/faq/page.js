@@ -19,6 +19,23 @@ export default function FAQPage() {
         setCoins(parsed.coins || 0);
       } catch (e) {}
     }
+
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = window.location.pathname;
+    }
   }, []);
 
   const handleLogout = () => {
