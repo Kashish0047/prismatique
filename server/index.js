@@ -772,7 +772,7 @@ function calculateMultiplier(total, bones, revealed) {
   return parseFloat((0.97 / prob).toFixed(4));
 }
 
-app.post('/api/chicken/start', async (req, res) => {
+app.post('/api/games/chicken/start', async (req, res) => {
   console.log('🐔 [Chicken] Start requested:', req.body);
   let { username, betAmount, boneCount } = req.body;
   
@@ -838,7 +838,7 @@ app.post('/api/chicken/start', async (req, res) => {
   }
 });
 
-app.post('/api/chicken/reveal', async (req, res) => {
+app.post('/api/games/chicken/reveal', async (req, res) => {
   let { username, index } = req.body;
   if (!username) return res.status(400).json({ success: false });
   username = username.toLowerCase();
@@ -879,7 +879,7 @@ app.post('/api/chicken/reveal', async (req, res) => {
   }
 });
 
-app.post('/api/chicken/cashout', async (req, res) => {
+app.post('/api/games/chicken/cashout', async (req, res) => {
   let { username } = req.body;
   if (!username) return res.status(400).json({ success: false });
   username = username.toLowerCase();

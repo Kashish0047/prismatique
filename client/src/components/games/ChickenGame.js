@@ -38,7 +38,7 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/chicken/start`, {
+      const res = await fetch(`${API}/games/chicken/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username, betAmount, boneCount })
@@ -65,7 +65,7 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
     if (gameState !== 'playing' || loading || revealedIndices.includes(index)) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/chicken/reveal`, {
+      const res = await fetch(`${API}/games/chicken/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username, index })
@@ -96,7 +96,7 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
     if (gameState !== 'playing' || loading || revealedIndices.length === 0) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/chicken/cashout`, {
+      const res = await fetch(`${API}/games/chicken/cashout`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: user.username })
