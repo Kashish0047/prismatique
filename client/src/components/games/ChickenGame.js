@@ -55,7 +55,8 @@ export default function ChickenGame({ user, onCoinsUpdate }) {
         toast.error(data.message);
       }
     } catch (e) {
-      toast.error('Failed to start game');
+      console.error('Chicken Start Error:', e);
+      toast.error('Failed to start game: ' + e.message);
     }
     setLoading(false);
   };

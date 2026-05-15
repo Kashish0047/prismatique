@@ -773,19 +773,38 @@ function calculateMultiplier(total, bones, revealed) {
 }
 
 app.post('/api/games/chicken/start', async (req, res) => {
-  const { username, betAmount, boneCount } = req.body;
-  if (!username || !betAmount || betAmount < 1 || boneCount < 1 || boneCount > 24) {
-    return res.status(400).json({ success: false, message: "Invalid game settings" });
+  console.log('🐔 [Chicken] Start requested:', req.body);
+  let { username, betAmount, boneCount } = req.body;
+  
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ success: false, message: "Invalid username" });
+  }
+
+  username = username.toLowerCase();
+  betAmount = parseInt(betAmount) || 0;
+  boneCount = parseInt(boneCount) || 0;
+
+  if (betAmount < 1 || boneCount < 1 || boneCount > 24) {
+    return res.status(400).json({ success: false, message: "Invalid bet or bones" });
   }
 
   try {
-    const user = await User.findOne({ username: username.toLowerCase() });
-    if (!user || user.coins < betAmount) {
+    let user = await User.findOne({ username });
+    if (!user) {
+      user = new User({
+        username,
+        avatar: `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`,
+        coins: 100
+      });
+      await user.save();
+    }
+
+    if (user.coins < betAmount) {
       return res.status(400).json({ success: false, message: "Insufficient balance" });
     }
 
     // Cancel any existing active sessions
-    await GameSession.updateMany({ username: username.toLowerCase(), status: 'active' }, { status: 'ended', result: 'loss' });
+    await GameSession.updateMany({ username, status: 'active' }, { status: 'ended', result: 'loss' });
 
     // Generate grid
     const totalTiles = 25;
@@ -803,7 +822,7 @@ app.post('/api/games/chicken/start', async (req, res) => {
     await user.save();
 
     const session = new GameSession({
-      username: username.toLowerCase(),
+      username,
       gameType: 'chicken',
       betAmount,
       boneCount,
@@ -814,14 +833,17 @@ app.post('/api/games/chicken/start', async (req, res) => {
 
     res.json({ success: true, sessionId: session._id, coins: user.coins });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error('❌ [Chicken] Start Error:', err);
+    res.status(500).json({ success: false, message: "Server error: " + err.message });
   }
 });
 
 app.post('/api/games/chicken/reveal', async (req, res) => {
-  const { username, index } = req.body;
+  let { username, index } = req.body;
+  if (!username) return res.status(400).json({ success: false });
+  username = username.toLowerCase();
   try {
-    const session = await GameSession.findOne({ username: username.toLowerCase(), status: 'active' });
+    const session = await GameSession.findOne({ username, status: 'active' });
     if (!session) return res.status(404).json({ success: false, message: "No active game" });
 
     if (session.revealedIndices.includes(index)) {
@@ -858,9 +880,11 @@ app.post('/api/games/chicken/reveal', async (req, res) => {
 });
 
 app.post('/api/games/chicken/cashout', async (req, res) => {
-  const { username } = req.body;
+  let { username } = req.body;
+  if (!username) return res.status(400).json({ success: false });
+  username = username.toLowerCase();
   try {
-    const session = await GameSession.findOne({ username: username.toLowerCase(), status: 'active' });
+    const session = await GameSession.findOne({ username, status: 'active' });
     if (!session) return res.status(404).json({ success: false, message: "No active game" });
 
     if (session.revealedIndices.length === 0) {
