@@ -135,20 +135,21 @@ export default function GamesHubPage() {
           display: flex;
           flex-direction: column;
           background: #11141b;
-          border-radius: 32px;
-          border: 1px solid rgba(255,255,255,0.06);
+          border-radius: 28px;
+          border: 1px solid rgba(255,255,255,0.08);
           overflow: hidden;
           text-decoration: none !important;
           transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
           height: 100%;
           position: relative;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
-        .hub-card-v3-top { height: 220px; position: relative; overflow: hidden; }
-        .hub-card-v3-img { position: absolute; inset: 0; background-size: cover; background-position: center; transition: 0.6s; opacity: 0.5; }
-        .hub-card-v3-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(8,10,15,0.8) 100%); }
-        .hub-card-v3-tag { position: absolute; top: 24px; left: 24px; background: rgba(0,0,0,0.6); padding: 6px 14px; border-radius: 12px; font-size: 0.6rem; font-weight: 900; letter-spacing: 1.5px; color: var(--gc); border: 1px solid color-mix(in srgb, var(--gc) 30%, transparent); backdrop-filter: blur(8px); }
-        .hub-card-v3-emoji { position: absolute; bottom: 20px; right: 24px; font-size: 4rem; transition: 0.4s; }
+        .hub-card-v3-top { height: 200px; position: relative; overflow: hidden; background: #080a0f; }
+        .hub-card-v3-img { position: absolute; inset: 0; background-size: cover; background-position: center; transition: 0.8s; opacity: 0.15; filter: grayscale(100%) blur(4px); }
+        .hub-card-v3-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, #11141b 100%); }
+        .hub-card-v3-tag { position: absolute; top: 20px; left: 24px; background: rgba(0,0,0,0.4); padding: 5px 12px; border-radius: 10px; font-size: 0.6rem; font-weight: 900; letter-spacing: 1.5px; color: var(--gc); border: 1px solid color-mix(in srgb, var(--gc) 40%, transparent); backdrop-filter: blur(8px); }
+        .hub-card-v3-emoji { position: absolute; bottom: 10px; right: 24px; font-size: 5rem; transition: 0.5s; filter: drop-shadow(0 0 20px color-mix(in srgb, var(--gc) 20%, transparent)); }
 
         .hub-card-v3-body { padding: 32px; flex: 1; display: flex; flex-direction: column; }
         .hub-card-v3-body h3 { font-size: 2rem; font-weight: 900; color: #fff; margin-bottom: 12px; text-decoration: none !important; border: none !important; }
@@ -158,10 +159,10 @@ export default function GamesHubPage() {
         .hub-btn-pill { background: var(--gc); color: #000; padding: 12px 28px; border-radius: 14px; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px; transition: 0.3s; }
         .hub-fair-info { color: #53fc18; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; }
 
-        .hub-card-v3:hover { transform: translateY(-15px); border-color: var(--gc); box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 40px color-mix(in srgb, var(--gc) 15%, transparent); }
-        .hub-card-v3:hover .hub-card-v3-img { transform: scale(1.1); opacity: 0.7; }
-        .hub-card-v3:hover .hub-card-v3-emoji { transform: scale(1.2) rotate(12deg); }
-        .hub-card-v3:hover .hub-btn-pill { transform: scale(1.05); box-shadow: 0 10px 20px color-mix(in srgb, var(--gc) 30%, transparent); }
+        .hub-card-v3:hover { transform: translateY(-12px); border-color: var(--gc); box-shadow: 0 30px 60px rgba(0,0,0,0.8), 0 0 30px color-mix(in srgb, var(--gc) 25%, transparent); }
+        .hub-card-v3:hover .hub-card-v3-img { transform: scale(1.1); opacity: 0.3; filter: grayscale(0%) blur(2px); }
+        .hub-card-v3:hover .hub-card-v3-emoji { transform: scale(1.15) rotate(10deg); filter: drop-shadow(0 0 30px var(--gc)); }
+        .hub-card-v3:hover .hub-btn-pill { transform: scale(1.05); box-shadow: 0 10px 25px color-mix(in srgb, var(--gc) 50%, transparent); }
 
         :global(a), :global(a:hover), :global(a:focus) { text-decoration: none !important; }
         :global(h3), :global(h2), :global(h1) { text-decoration: none !important; border: none !important; }

@@ -15,6 +15,7 @@ const Activity = require('./models/Activity');
 const GameHistory = require('./models/GameHistory');
 const Raffle = require('./models/Raffle');
 const Giveaway = require('./models/Giveaway');
+const GameSession = require('./models/GameSession');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -757,6 +758,133 @@ app.post('/api/games/play', async (req, res) => {
   } catch (err) {
     console.error('Game Error:', err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// --- STATEFUL CHICKEN GAME ---
+
+function calculateMultiplier(total, bones, revealed) {
+  if (revealed === 0) return 1;
+  let prob = 1;
+  for (let i = 0; i < revealed; i++) {
+    prob *= (total - bones - i) / (total - i);
+  }
+  return parseFloat((0.97 / prob).toFixed(4));
+}
+
+app.post('/api/games/chicken/start', async (req, res) => {
+  const { username, betAmount, boneCount } = req.body;
+  if (!username || !betAmount || betAmount < 1 || boneCount < 1 || boneCount > 24) {
+    return res.status(400).json({ success: false, message: "Invalid game settings" });
+  }
+
+  try {
+    const user = await User.findOne({ username: username.toLowerCase() });
+    if (!user || user.coins < betAmount) {
+      return res.status(400).json({ success: false, message: "Insufficient balance" });
+    }
+
+    // Cancel any existing active sessions
+    await GameSession.updateMany({ username: username.toLowerCase(), status: 'active' }, { status: 'ended', result: 'loss' });
+
+    // Generate grid
+    const totalTiles = 25;
+    const grid = new Array(totalTiles).fill('chicken');
+    let bonesPlaced = 0;
+    while (bonesPlaced < boneCount) {
+      const idx = Math.floor(Math.random() * totalTiles);
+      if (grid[idx] !== 'bone') {
+        grid[idx] = 'bone';
+        bonesPlaced++;
+      }
+    }
+
+    user.coins -= betAmount;
+    await user.save();
+
+    const session = new GameSession({
+      username: username.toLowerCase(),
+      gameType: 'chicken',
+      betAmount,
+      boneCount,
+      grid,
+      status: 'active'
+    });
+    await session.save();
+
+    res.json({ success: true, sessionId: session._id, coins: user.coins });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+app.post('/api/games/chicken/reveal', async (req, res) => {
+  const { username, index } = req.body;
+  try {
+    const session = await GameSession.findOne({ username: username.toLowerCase(), status: 'active' });
+    if (!session) return res.status(404).json({ success: false, message: "No active game" });
+
+    if (session.revealedIndices.includes(index)) {
+      return res.status(400).json({ success: false, message: "Already revealed" });
+    }
+
+    session.revealedIndices.push(index);
+    const item = session.grid[index];
+
+    if (item === 'bone') {
+      session.status = 'ended';
+      session.result = 'loss';
+      session.payout = 0;
+      await session.save();
+      return res.json({ success: true, status: 'ended', result: 'loss', grid: session.grid });
+    } else {
+      const multiplier = calculateMultiplier(25, session.boneCount, session.revealedIndices.length);
+      const nextMultiplier = calculateMultiplier(25, session.boneCount, session.revealedIndices.length + 1);
+      
+      await session.save();
+      res.json({ 
+        success: true, 
+        status: 'active', 
+        result: 'win', 
+        revealedItem: 'chicken', 
+        multiplier,
+        nextMultiplier,
+        currentWinnings: Math.floor(session.betAmount * multiplier)
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false });
+  }
+});
+
+app.post('/api/games/chicken/cashout', async (req, res) => {
+  const { username } = req.body;
+  try {
+    const session = await GameSession.findOne({ username: username.toLowerCase(), status: 'active' });
+    if (!session) return res.status(404).json({ success: false, message: "No active game" });
+
+    if (session.revealedIndices.length === 0) {
+      return res.status(400).json({ success: false, message: "Cannot cashout with 0 picks" });
+    }
+
+    const multiplier = calculateMultiplier(25, session.boneCount, session.revealedIndices.length);
+    const payout = Math.floor(session.betAmount * multiplier);
+
+    session.status = 'ended';
+    session.result = 'win';
+    session.payout = payout;
+    await session.save();
+
+    const user = await User.findOne({ username: username.toLowerCase() });
+    user.coins += payout;
+    await user.save();
+
+    new Activity({ user: username, action: `cashed out ${payout} coins in Chicken` }).save();
+    await new GameHistory({ username: username.toLowerCase(), game: 'chicken', betAmount: session.betAmount, result: 'win', payout, details: { boneCount: session.boneCount, revealedCount: session.revealedIndices.length } }).save();
+
+    res.json({ success: true, payout, coins: user.coins, grid: session.grid });
+  } catch (err) {
+    res.status(500).json({ success: false });
   }
 });
 

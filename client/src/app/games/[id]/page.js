@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import CoinWallet from '@/components/CoinWallet';
 import DiceGame from '@/components/games/DiceGame';
 import LimboGame from '@/components/games/LimboGame';
 import MinesGame from '@/components/games/MinesGame';
@@ -119,10 +120,7 @@ export default function SingleGamePage({ params: paramsPromise }) {
             </div>
 
             <div className="cabinet-header-right">
-              <div className="cabinet-wallet">
-                <span className="wallet-coin">🪙</span>
-                <span className="wallet-num">{coins.toLocaleString()}</span>
-              </div>
+              <CoinWallet user={user} onCoinsUpdate={handleCoinsUpdate} />
             </div>
           </header>
 

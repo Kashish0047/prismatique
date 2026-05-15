@@ -237,7 +237,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            WELCOME TO <span className="highlight-blue">PRISMATIQUE BONUSES</span>
+            WELCOME TO <br /> <span className="highlight-blue">PRISMATIQUE BONUSES</span>
           </motion.h1>
           <p className="hero-description">
             Discover premium casinos with unbeatable welcome rewards and guaranteed instant withdrawals.
