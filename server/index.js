@@ -48,22 +48,14 @@ const allowedOrigins = [
 ].filter(Boolean).map(url => url.replace(/\/$/, "")); // Remove trailing slashes
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const cleanOrigin = origin.replace(/\/$/, "");
-    if (allowedOrigins.indexOf(cleanOrigin) !== -1) {
-      callback(null, true);
-    } else {
-      console.error(`🚫 CORS Blocked: Origin "${origin}" is not in allowedOrigins:`, allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins for debugging
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// Health check to verify server is alive
+app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 
 class PuppeteerQueue {
   constructor() {
@@ -746,8 +738,9 @@ app.post('/api/games/play', async (req, res) => {
       details = { level, multiplier, hitBad };
 
     } else if (game === 'chicken') {
+      // Allow legacy/simple play for chicken to verify connectivity
       const winnerIndex = Math.floor(Math.random() * 5);
-      const { pick } = params;
+      const { pick } = params || {};
       if (pick === winnerIndex) { result = 'win'; payout = betAmount * 5; }
       details = { winnerIndex, pick };
     }
@@ -779,7 +772,7 @@ function calculateMultiplier(total, bones, revealed) {
   return parseFloat((0.97 / prob).toFixed(4));
 }
 
-app.post('/api/games/chicken/start', async (req, res) => {
+app.post('/api/chicken/start', async (req, res) => {
   console.log('🐔 [Chicken] Start requested:', req.body);
   let { username, betAmount, boneCount } = req.body;
   
@@ -845,7 +838,7 @@ app.post('/api/games/chicken/start', async (req, res) => {
   }
 });
 
-app.post('/api/games/chicken/reveal', async (req, res) => {
+app.post('/api/chicken/reveal', async (req, res) => {
   let { username, index } = req.body;
   if (!username) return res.status(400).json({ success: false });
   username = username.toLowerCase();
@@ -886,7 +879,7 @@ app.post('/api/games/chicken/reveal', async (req, res) => {
   }
 });
 
-app.post('/api/games/chicken/cashout', async (req, res) => {
+app.post('/api/chicken/cashout', async (req, res) => {
   let { username } = req.body;
   if (!username) return res.status(400).json({ success: false });
   username = username.toLowerCase();
