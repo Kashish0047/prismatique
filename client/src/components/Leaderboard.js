@@ -66,10 +66,102 @@ export default function Leaderboard() {
 
         <Podium top3={top3} />
 
-        <div className="countdown-mini">
-          <span className="small-label">LEADERBOARD ENDS IN</span>
-          <span className="timer-mini">{timeLeft.days}D : {timeLeft.hours}H : {timeLeft.minutes}M : {timeLeft.seconds}S</span>
+        <div className="countdown-banner">
+          <span className="countdown-label">🏆 LEADERBOARD ENDS IN</span>
+          <div className="countdown-segments">
+            <div className="countdown-seg">
+              <div className="seg-value">{timeLeft.days}</div>
+              <div className="seg-unit">DAYS</div>
+            </div>
+            <div className="countdown-sep">:</div>
+            <div className="countdown-seg">
+              <div className="seg-value">{timeLeft.hours}</div>
+              <div className="seg-unit">HRS</div>
+            </div>
+            <div className="countdown-sep">:</div>
+            <div className="countdown-seg">
+              <div className="seg-value">{timeLeft.minutes}</div>
+              <div className="seg-unit">MIN</div>
+            </div>
+            <div className="countdown-sep">:</div>
+            <div className="countdown-seg seg-seconds">
+              <div className="seg-value">{timeLeft.seconds}</div>
+              <div className="seg-unit">SEC</div>
+            </div>
+          </div>
         </div>
+
+        <style jsx>{`
+          .countdown-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            margin: 32px 0;
+            padding: 24px 40px;
+            background: linear-gradient(135deg, rgba(83,252,24,0.05) 0%, rgba(0,242,255,0.05) 100%);
+            border: 1px solid rgba(83,252,24,0.15);
+            border-radius: 20px;
+            flex-wrap: wrap;
+          }
+          .countdown-label {
+            font-size: 0.7rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: rgba(255,255,255,0.5);
+          }
+          .countdown-segments {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+          .countdown-seg {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 16px 20px;
+            min-width: 72px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+          }
+          .seg-seconds {
+            border-color: rgba(83,252,24,0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px rgba(83,252,24,0.1), inset 0 1px 0 rgba(83,252,24,0.1);
+          }
+          .seg-value {
+            font-size: 2.2rem;
+            font-weight: 950;
+            color: #fff;
+            line-height: 1;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -1px;
+          }
+          .seg-seconds .seg-value {
+            color: #53fc18;
+            text-shadow: 0 0 20px rgba(83,252,24,0.5);
+          }
+          .seg-unit {
+            font-size: 0.55rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.3);
+            margin-top: 6px;
+          }
+          .countdown-sep {
+            font-size: 2rem;
+            font-weight: 900;
+            color: rgba(255,255,255,0.2);
+            margin-bottom: 18px;
+          }
+          @media (max-width: 600px) {
+            .countdown-banner { gap: 16px; padding: 18px 16px; }
+            .countdown-seg { min-width: 56px; padding: 12px 14px; }
+            .seg-value { font-size: 1.6rem; }
+          }
+        `}</style>
 
         <div className="leaderboard-list">
           <AnimatePresence>

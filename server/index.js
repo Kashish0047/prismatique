@@ -21,6 +21,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/prismatique';
 
+// VERSION CHECK - If you see this in logs, latest code is deployed
+console.log('🚀 SERVER VERSION: CORS-FIX-V4 - origin:true');
+
 const connectDB = async () => {
   try {
     await mongoose.connect(MONGODB_URI, {
