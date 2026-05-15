@@ -42,14 +42,21 @@ connectDB();
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  process.env.CLIENT_URL
-].filter(Boolean);
+  process.env.CLIENT_URL,
+  'https://prismatiquebonuses.com',
+  'https://www.prismatiquebonuses.com'
+].filter(Boolean).map(url => url.replace(/\/$/, "")); // Remove trailing slashes
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const cleanOrigin = origin.replace(/\/$/, "");
+    if (allowedOrigins.indexOf(cleanOrigin) !== -1) {
       callback(null, true);
     } else {
+      console.error(`🚫 CORS Blocked: Origin "${origin}" is not in allowedOrigins:`, allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
