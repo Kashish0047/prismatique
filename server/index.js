@@ -748,7 +748,11 @@ app.post('/api/games/play', async (req, res) => {
       details = { winnerIndex, pick };
     }
 
-    user.coins = result === 'win' ? user.coins - betAmount + payout : user.coins - betAmount;
+    if (game === 'limbo') {
+      user.coins = result === 'win' ? user.coins + payout : user.coins - betAmount;
+    } else {
+      user.coins = result === 'win' ? user.coins - betAmount + payout : user.coins - betAmount;
+    }
     await user.save();
 
     await new GameHistory({ username: username.toLowerCase(), game, betAmount, result, payout, details }).save();
