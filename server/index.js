@@ -970,6 +970,191 @@ app.post('/api/games/dragon_tower/cashout', async (req, res) => {
   }
 });
 
+// --- STATEFUL MINES GAME ---
+
+app.post('/api/games/mines/start', async (req, res) => {
+  let { username, betAmount, mineCount } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: 'Username required' });
+  username = username.toLowerCase();
+  betAmount = parseInt(betAmount) || 0;
+  mineCount = parseInt(mineCount) || 0;
+
+  if (betAmount < 1 || mineCount < 1 || mineCount > 24) {
+    return res.status(400).json({ success: false, message: 'Invalid bet or mine count' });
+  }
+
+  try {
+    let user = await User.findOne({ username });
+    if (!user) {
+      user = new User({
+        username,
+        avatar: `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`,
+        coins: 100
+      });
+      await user.save();
+    }
+
+    if (user.coins < betAmount) {
+      return res.status(400).json({ success: false, message: 'Not enough coins. Use the Faucet to claim more!' });
+    }
+
+    // Cancel existing active sessions
+    await GameSession.updateMany({ username, status: 'active' }, { status: 'ended', result: 'loss' });
+
+    // Generate grid of 25 tiles
+    const totalTiles = 25;
+    const grid = new Array(totalTiles).fill('safe');
+    let minesPlaced = 0;
+    while (minesPlaced < mineCount) {
+      const idx = Math.floor(Math.random() * totalTiles);
+      if (grid[idx] !== 'mine') {
+        grid[idx] = 'mine';
+        minesPlaced++;
+      }
+    }
+
+    user.coins -= betAmount;
+    await user.save();
+
+    const session = new GameSession({
+      username,
+      gameType: 'mines',
+      betAmount,
+      mineCount,
+      grid,
+      status: 'active'
+    });
+    await session.save();
+
+    res.json({ success: true, sessionId: session._id, coins: user.coins });
+  } catch (err) {
+    console.error('Mines Start Error:', err);
+    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+  }
+});
+
+app.post('/api/games/mines/reveal', async (req, res) => {
+  let { username, index } = req.body;
+  if (!username) return res.status(400).json({ success: false });
+  username = username.toLowerCase();
+  try {
+    const session = await GameSession.findOne({ username, gameType: 'mines', status: 'active' });
+    if (!session) return res.status(404).json({ success: false, message: 'No active session found' });
+
+    if (session.revealedIndices.includes(index)) {
+      return res.status(400).json({ success: false, message: 'Already revealed' });
+    }
+
+    session.revealedIndices.push(index);
+    const item = session.grid[index];
+
+    if (item === 'mine') {
+      session.status = 'ended';
+      session.result = 'loss';
+      session.payout = 0;
+      await session.save();
+
+      await new GameHistory({
+        username,
+        game: 'mines',
+        betAmount: session.betAmount,
+        result: 'loss',
+        payout: 0,
+        details: { mineCount: session.mineCount, hitMine: true, revealedCount: session.revealedIndices.length }
+      }).save();
+
+      return res.json({ success: true, status: 'ended', result: 'loss', grid: session.grid });
+    } else {
+      const revealedSafeCount = session.revealedIndices.length;
+      const totalSafeCells = 25 - session.mineCount;
+
+      const multiplier = calculateMultiplier(25, session.mineCount, revealedSafeCount);
+      const nextMultiplier = calculateMultiplier(25, session.mineCount, revealedSafeCount + 1);
+      const currentWinnings = Math.floor(session.betAmount * multiplier);
+
+      if (revealedSafeCount === totalSafeCells) {
+        // Conquered!
+        session.status = 'ended';
+        session.result = 'win';
+        session.payout = currentWinnings;
+        await session.save();
+
+        const user = await User.findOne({ username });
+        user.coins += currentWinnings;
+        await user.save();
+
+        new Activity({ user: username, action: `conquered Mines and won ${currentWinnings} coins!` }).save();
+        await new GameHistory({
+          username,
+          game: 'mines',
+          betAmount: session.betAmount,
+          result: 'win',
+          payout: currentWinnings,
+          details: { mineCount: session.mineCount, revealedCount: revealedSafeCount }
+        }).save();
+
+        return res.json({ success: true, status: 'ended', result: 'win', payout: currentWinnings, coins: user.coins, grid: session.grid });
+      } else {
+        await session.save();
+        return res.json({
+          success: true,
+          status: 'active',
+          result: 'win',
+          revealedItem: 'safe',
+          multiplier,
+          nextMultiplier,
+          currentWinnings
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Mines Reveal Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/games/mines/cashout', async (req, res) => {
+  let { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: 'Username required' });
+  username = username.toLowerCase();
+  try {
+    const session = await GameSession.findOne({ username, gameType: 'mines', status: 'active' });
+    if (!session) return res.status(404).json({ success: false, message: 'No active session found' });
+
+    if (session.revealedIndices.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cannot cashout with 0 picks' });
+    }
+
+    const multiplier = calculateMultiplier(25, session.mineCount, session.revealedIndices.length);
+    const payout = Math.floor(session.betAmount * multiplier);
+
+    session.status = 'ended';
+    session.result = 'win';
+    session.payout = payout;
+    await session.save();
+
+    const user = await User.findOne({ username });
+    user.coins += payout;
+    await user.save();
+
+    new Activity({ user: username, action: `cashed out ${payout} coins in Mines` }).save();
+    await new GameHistory({
+      username,
+      game: 'mines',
+      betAmount: session.betAmount,
+      result: 'win',
+      payout,
+      details: { mineCount: session.mineCount, revealedCount: session.revealedIndices.length }
+    }).save();
+
+    res.json({ success: true, payout, coins: user.coins, grid: session.grid });
+  } catch (err) {
+    console.error('Mines Cashout Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
 // --- STATEFUL CHICKEN GAME ---
 
 function calculateMultiplier(total, bones, revealed) {

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const GRID_SIZE = 25;
@@ -12,46 +13,108 @@ export default function MinesGame({ user, onCoinsUpdate }) {
   const [result, setResult] = useState(null);
   const [currentMultiplier, setCurrentMultiplier] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [fullGrid, setFullGrid] = useState(null); // stores the revealed full grid after game ends
 
-  const startGame = () => {
-    setGameActive(true);
-    setRevealed([]);
+  const startGame = async () => {
+    if (!user) {
+      toast.error('Please login to play');
+      return;
+    }
+    setLoading(true);
     setResult(null);
-    setCurrentMultiplier(1);
+    setFullGrid(null);
+    try {
+      const res = await fetch(`${API}/games/mines/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, betAmount: bet, mineCount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGameActive(true);
+        setRevealed([]);
+        setCurrentMultiplier(1);
+        onCoinsUpdate(data.coins);
+        toast.info('💣 Mines placed! Pick safe tiles to earn multipliers.');
+      } else {
+        toast.error(data.message || 'Failed to start game');
+      }
+    } catch (e) {
+      toast.error('Connection error to server');
+    }
+    setLoading(false);
   };
 
   const reveal = async (index) => {
     if (!gameActive || revealed.find(r => r.index === index) || loading) return;
     setLoading(true);
-    const revealedSafe = revealed.filter(r => r.safe).length;
     try {
-      const res = await fetch(`${API}/games/play`, {
+      const res = await fetch(`${API}/games/mines/reveal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user.username, game: 'mines', betAmount: bet, params: { mineCount, revealedSafe } })
+        body: JSON.stringify({ username: user.username, index })
       });
       const data = await res.json();
-      if (!data.success) { setResult({ error: data.message }); setGameActive(false); setLoading(false); return; }
-      const hitMine = data.details.hitMine;
-      setRevealed(prev => [...prev, { index, safe: !hitMine }]);
-      if (hitMine) {
-        setResult(data);
+      if (!data.success) {
+        setResult({ error: data.message });
+        toast.error(data.message);
         setGameActive(false);
-        onCoinsUpdate(data.coins);
-      } else {
-        setCurrentMultiplier(data.details.multiplier);
-        onCoinsUpdate(data.coins);
+        setLoading(false);
+        return;
       }
-    } catch (e) { setResult({ error: 'Server error' }); setGameActive(false); }
+
+      const { status, result: outcome, payout, multiplier } = data;
+
+      if (status === 'ended') {
+        setGameActive(false);
+        setFullGrid(data.grid);
+        if (outcome === 'loss') {
+          setRevealed(prev => [...prev, { index, safe: false }]);
+          setResult({ result: 'loss', payout: 0 });
+          toast.error('💥 BOOM! You hit a mine.');
+        } else if (outcome === 'win') {
+          setRevealed(prev => [...prev, { index, safe: true }]);
+          setResult({ result: 'win', payout });
+          onCoinsUpdate(data.coins);
+          toast.success(`🏆 CONQUERED! All safe tiles cleared for ${payout} coins! 🎉`);
+        }
+      } else {
+        setRevealed(prev => [...prev, { index, safe: true }]);
+        setCurrentMultiplier(multiplier);
+      }
+    } catch (e) {
+      toast.error('Server connection error');
+      setGameActive(false);
+    }
     setLoading(false);
   };
 
   const cashout = async () => {
-    if (!gameActive || revealed.filter(r => r.safe).length === 0) return;
-    setGameActive(false);
-    const safePayout = Math.floor(bet * currentMultiplier);
-    setResult({ result: 'win', payout: safePayout, coins: null });
+    if (!gameActive || revealed.filter(r => r.safe).length === 0 || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/games/mines/cashout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setGameActive(false);
+        setFullGrid(data.grid);
+        setResult({ result: 'win', payout: data.payout });
+        onCoinsUpdate(data.coins);
+        toast.success(`💸 Cashed out ${data.payout} coins successfully! 🎉`);
+      } else {
+        toast.error(data.message || 'Cashout failed');
+      }
+    } catch (e) {
+      toast.error('Server error during cashout');
+    }
+    setLoading(false);
   };
+
+  const payoutValue = Math.floor(bet * currentMultiplier);
 
   return (
     <div className="gp-wrap">
@@ -65,8 +128,8 @@ export default function MinesGame({ user, onCoinsUpdate }) {
 
         {result && (
           <div className={`mines-result-overlay ${result.result === 'win' ? 'win' : 'loss'}`}>
-            <div className="res-icon">{result.result === 'win' ? '💎' : '💥'}</div>
-            <div className="res-text">{result.result === 'win' ? `+${result.payout} COINS` : `BOOM! -${bet} COINS`}</div>
+            <div className="res-icon">{result.result === 'win' ? '🏆' : '💀'}</div>
+            <div className="res-text">{result.result === 'win' ? `CONQUERED! +${result.payout} COINS` : `BOOM! DEFEATED`}</div>
             <button className="gp-adj" onClick={() => setResult(null)}>PLAY AGAIN</button>
           </div>
         )}
@@ -75,14 +138,38 @@ export default function MinesGame({ user, onCoinsUpdate }) {
           <div className="mines-grid">
             {Array.from({ length: GRID_SIZE }).map((_, i) => {
               const cell = revealed.find(r => r.index === i);
+              const isMineEnd = fullGrid && fullGrid[i] === 'mine';
+              const isSafeEnd = fullGrid && fullGrid[i] === 'safe';
+
+              let emoji = '';
+              let className = 'mine-cell';
+
+              if (cell) {
+                if (cell.safe) {
+                  emoji = '💎';
+                  className += ' safe';
+                } else {
+                  emoji = '💥';
+                  className += ' mine';
+                }
+              } else if (fullGrid) {
+                if (isMineEnd) {
+                  emoji = '💣';
+                  className += ' mine-unrevealed';
+                } else if (isSafeEnd) {
+                  emoji = '💎';
+                  className += ' safe-unrevealed';
+                }
+              }
+
               return (
                 <button 
                   key={i} 
-                  className={`mine-cell ${cell ? (cell.safe ? 'safe' : 'mine') : ''}`} 
+                  className={className} 
                   onClick={() => reveal(i)}
                   disabled={!gameActive || !!cell || loading}
                 >
-                  {cell ? (cell.safe ? '💎' : '💥') : ''}
+                  {emoji}
                 </button>
               );
             })}
@@ -108,20 +195,26 @@ export default function MinesGame({ user, onCoinsUpdate }) {
               <button className="gp-adj gp-adj-2x" style={{'--adj-c':'#f59e0b'}} onClick={() => setBet(bet * 2)}>2×</button>
             </div>
 
-            <button className="gp-play-btn gp-play-mines" onClick={startGame}>💣 START GAME</button>
+            <button className="gp-play-btn gp-play-mines" onClick={startGame} disabled={loading}>
+              {loading ? 'STARTING...' : '💣 START GAME'}
+            </button>
           </>
         ) : (
-          <>
+          <div className="mines-active-controls">
             <div className="gp-stats">
               <div className="gp-stat"><span>MINES</span><strong>{mineCount}</strong></div>
               <div className="gp-stat"><span>MULTIPLIER</span><strong>{currentMultiplier.toFixed(2)}×</strong></div>
-              <div className="gp-stat"><span>PROFIT</span><strong>{Math.floor(bet * currentMultiplier) - bet} 🪙</strong></div>
+              <div className="gp-stat"><span>CASH VALUE</span><strong>{payoutValue} 🪙</strong></div>
             </div>
             
-            <button className="gp-play-btn gp-cashout" onClick={cashout} disabled={revealed.filter(r => r.safe).length === 0}>
-               💰 CASHOUT {Math.floor(bet * currentMultiplier)}
+            <button 
+              className="gp-play-btn gp-cashout" 
+              onClick={cashout} 
+              disabled={loading || revealed.filter(r => r.safe).length === 0}
+            >
+              {revealed.filter(r => r.safe).length === 0 ? 'PICK A TILE FIRST' : `💰 CASHOUT ${payoutValue} 🪙`}
             </button>
-          </>
+          </div>
         )}
       </div>
 
@@ -168,6 +261,17 @@ export default function MinesGame({ user, onCoinsUpdate }) {
         .mine-cell.safe { background: rgba(83,252,24,0.15); border-color: #53fc18; }
         .mine-cell.mine { background: rgba(239,68,68,0.2); border-color: #ef4444; animation: shake 0.3s; }
 
+        .mine-cell.mine-unrevealed {
+          background: rgba(239,68,68,0.05);
+          border-color: rgba(239,68,68,0.3);
+          opacity: 0.5;
+        }
+        .mine-cell.safe-unrevealed {
+          background: rgba(83,252,24,0.03);
+          border-color: rgba(83,252,24,0.2);
+          opacity: 0.45;
+        }
+
         .mines-result-overlay {
           position: absolute;
           inset: 0;
@@ -196,15 +300,42 @@ export default function MinesGame({ user, onCoinsUpdate }) {
         }
 
         .gp-play-mines { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
-        .gp-cashout { background: linear-gradient(135deg, #53fc18, #10b981); color: #000; }
-        .gp-play-mines:hover:not(:disabled) { box-shadow: 0 0 32px rgba(245,158,11,0.4); }
-        .gp-cashout:hover:not(:disabled) { box-shadow: 0 0 32px rgba(83,252,24,0.4); }
+        .gp-cashout {
+          background: linear-gradient(135deg, #53fc18, #10b981);
+          color: #000;
+          font-weight: 950;
+          box-shadow: 0 10px 25px rgba(83, 252, 24, 0.25);
+          animation: pulse 2s infinite;
+        }
+        .gp-cashout:hover:not(:disabled) {
+          box-shadow: 0 15px 35px rgba(83, 252, 24, 0.45);
+        }
+        .gp-cashout:disabled {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.25);
+          box-shadow: none;
+          cursor: not-allowed;
+          animation: none;
+        }
+
+        .mines-active-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          width: 100%;
+        }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-5px); }
           75% { transform: translateX(5px); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.01); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </div>
