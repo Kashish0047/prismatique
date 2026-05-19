@@ -2,12 +2,16 @@ const mongoose = require('mongoose');
 
 const GameSessionSchema = new mongoose.Schema({
   username: { type: String, required: true, lowercase: true },
-  gameType: { type: String, enum: ['chicken', 'mines'], required: true },
+  gameType: { type: String, enum: ['chicken', 'mines', 'dragon_tower'], required: true },
   betAmount: { type: Number, required: true },
   boneCount: { type: Number, default: 1 }, // for chicken
   mineCount: { type: Number, default: 1 }, // for mines
   grid: { type: [String], required: true }, // e.g., ['chicken', 'bone', ...]
   revealedIndices: { type: [Number], default: [] },
+  currentLevel: { type: Number, default: 0 },
+  towerBadEggs: { type: [Number], default: [] }, // index of bad egg per level for dragon_tower
+  totalLevels: { type: Number, default: 5 },
+  eggsPerLevel: { type: Number, default: 3 },
   status: { type: String, enum: ['active', 'ended'], default: 'active' },
   result: { type: String, enum: ['win', 'loss', null], default: null },
   payout: { type: Number, default: 0 },

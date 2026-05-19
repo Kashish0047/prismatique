@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { toast } from 'react-toastify';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const LEVELS = 5;
@@ -12,36 +13,95 @@ export default function DragonTowerGame({ user, onCoinsUpdate }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const startGame = () => {
-    setCurrentLevel(1);
-    setPicks([]);
+  const startGame = async () => {
+    if (!user) {
+      toast.error('Please login to play');
+      return;
+    }
+    setLoading(true);
     setResult(null);
+    try {
+      const res = await fetch(`${API}/games/dragon_tower/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, betAmount: bet })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCurrentLevel(1);
+        setPicks([]);
+        onCoinsUpdate(data.coins);
+      } else {
+        toast.error(data.message || 'Failed to start climb');
+      }
+    } catch (e) {
+      toast.error('Connection error to server');
+    }
+    setLoading(false);
   };
 
   const pickEgg = async (eggIndex) => {
     if (loading || currentLevel === 0) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/games/play`, {
+      const res = await fetch(`${API}/games/dragon_tower/pick`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user.username, game: 'dragon_tower', betAmount: bet, params: { level: currentLevel } })
+        body: JSON.stringify({ username: user.username, eggIndex })
       });
       const data = await res.json();
-      if (!data.success) { setResult({ error: data.message }); setLoading(false); return; }
-      const { hitBad, multiplier } = data.details;
+      if (!data.success) {
+        setResult({ error: data.message });
+        toast.error(data.message);
+        setLoading(false);
+        return;
+      }
+
+      const { status, result: outcome, payout, currentLevel: nextLevel, details } = data;
+      const hitBad = details.hitBad;
+
       setPicks(prev => [...prev, { level: currentLevel, pick: eggIndex, hitBad }]);
-      onCoinsUpdate(data.coins);
+
       if (hitBad) {
         setResult({ result: 'loss', payout: 0, level: currentLevel });
         setCurrentLevel(0);
-      } else if (currentLevel === LEVELS) {
-        setResult({ result: 'win', payout: data.payout, multiplier });
+        toast.error('💥 BOOM! Hit a bad egg.');
+      } else if (status === 'ended' && outcome === 'win') {
+        setResult({ result: 'win', payout, multiplier: details.multiplier });
         setCurrentLevel(0);
+        onCoinsUpdate(data.coins);
+        toast.success(`🏆 CONQUERED! Won ${payout} coins! 🎉`);
       } else {
-        setCurrentLevel(prev => prev + 1);
+        setCurrentLevel(nextLevel);
       }
-    } catch (e) { setResult({ error: 'Server error' }); }
+    } catch (e) {
+      setResult({ error: 'Server error' });
+      toast.error('Server error occurred');
+    }
+    setLoading(false);
+  };
+
+  const cashout = async () => {
+    if (loading || currentLevel <= 1) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/games/dragon_tower/cashout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResult({ result: 'win', payout: data.payout, multiplier: data.details.multiplier });
+        setCurrentLevel(0);
+        onCoinsUpdate(data.coins);
+        toast.success(`💸 Cashed out ${data.payout} coins! 🎉`);
+      } else {
+        toast.error(data.message || 'Cashout failed');
+      }
+    } catch (e) {
+      toast.error('Connection error during cashout');
+    }
     setLoading(false);
   };
 
@@ -107,13 +167,24 @@ export default function DragonTowerGame({ user, onCoinsUpdate }) {
               <button className="gp-adj" onClick={() => setBet(Math.max(1, Math.floor(bet / 2)))}>½</button>
               <button className="gp-adj gp-adj-2x" style={{'--adj-c':'#ef4444'}} onClick={() => setBet(bet * 2)}>2×</button>
             </div>
-            <button className="gp-play-btn gp-play-tower" onClick={startGame}>🐉 CLIMB TOWER</button>
+            <button className="gp-play-btn gp-play-tower" onClick={startGame} disabled={loading}>
+              {loading ? 'STARTING...' : '🐉 CLIMB TOWER'}
+            </button>
           </>
         ) : (
-          <div className="gp-stats">
-            <div className="gp-stat"><span>CURRENT</span><strong>{currentMultiplier}×</strong></div>
-            <div className="gp-stat"><span>NEXT</span><strong>{nextMultiplier}×</strong></div>
-            <div className="gp-stat"><span>CASHVALUE</span><strong>{Math.floor(bet * currentMultiplier)} 🪙</strong></div>
+          <div className="tower-active-controls">
+            <div className="gp-stats">
+              <div className="gp-stat"><span>CURRENT</span><strong>{currentMultiplier}×</strong></div>
+              <div className="gp-stat"><span>NEXT</span><strong>{nextMultiplier}×</strong></div>
+              <div className="gp-stat"><span>CASHVALUE</span><strong>{Math.floor(bet * currentMultiplier)} 🪙</strong></div>
+            </div>
+            <button 
+              className="gp-play-btn gp-cashout-tower" 
+              onClick={cashout} 
+              disabled={loading || currentLevel <= 1}
+            >
+              {currentLevel <= 1 ? 'MAKE A PICK FIRST' : `💸 CASHOUT ${Math.floor(bet * currentMultiplier)} 🪙`}
+            </button>
           </div>
         )}
       </div>
@@ -197,11 +268,44 @@ export default function DragonTowerGame({ user, onCoinsUpdate }) {
         .gp-play-tower { background: linear-gradient(135deg, #ef4444, #991b1b); color: #fff; }
         .gp-play-tower:hover:not(:disabled) { box-shadow: 0 0 32px rgba(239,68,68,0.4); }
 
+        .tower-active-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          width: 100%;
+        }
+        .gp-cashout-tower {
+          background: linear-gradient(135deg, #f59e0b, #ef4444);
+          color: #fff;
+          font-weight: 950;
+          box-shadow: 0 10px 25px rgba(245, 158, 11, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: pulse 2s infinite;
+        }
+        .gp-cashout-tower:hover:not(:disabled) {
+          box-shadow: 0 15px 35px rgba(245, 158, 11, 0.45);
+        }
+        .gp-cashout-tower:disabled {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.25);
+          box-shadow: none;
+          cursor: not-allowed;
+          animation: none;
+        }
+
         @keyframes float { from { transform: translateY(0); } to { transform: translateY(-10px); } }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-5px); }
           75% { transform: translateX(5px); }
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.01); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </div>

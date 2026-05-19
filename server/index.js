@@ -764,6 +764,208 @@ app.post('/api/games/play', async (req, res) => {
   }
 });
 
+// --- STATEFUL DRAGON TOWER GAME ---
+
+app.post('/api/games/dragon_tower/start', async (req, res) => {
+  let { username, betAmount } = req.body;
+  if (!username || !betAmount || betAmount < 1) {
+    return res.status(400).json({ success: false, message: 'Invalid bet amount' });
+  }
+  username = username.toLowerCase();
+  try {
+    let user = await User.findOne({ username });
+    if (!user) {
+      user = new User({
+        username,
+        avatar: `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`,
+        coins: 100
+      });
+      await user.save();
+    }
+    if (user.coins < betAmount) {
+      return res.status(400).json({ success: false, message: 'Not enough coins. Use the Faucet to claim more!' });
+    }
+
+    // Cancel existing active sessions for this user
+    await GameSession.updateMany({ username, status: 'active' }, { status: 'ended', result: 'loss' });
+
+    // Pre-generate bad egg indices for 5 levels (each level is 0, 1, or 2)
+    const towerBadEggs = Array.from({ length: 5 }, () => Math.floor(Math.random() * 3));
+
+    user.coins -= betAmount;
+    await user.save();
+
+    const session = new GameSession({
+      username,
+      gameType: 'dragon_tower',
+      betAmount,
+      towerBadEggs,
+      currentLevel: 1,
+      totalLevels: 5,
+      eggsPerLevel: 3,
+      status: 'active'
+    });
+    await session.save();
+
+    res.json({ success: true, coins: user.coins, sessionId: session._id });
+  } catch (err) {
+    console.error('Dragon Tower Start Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/games/dragon_tower/pick', async (req, res) => {
+  let { username, eggIndex } = req.body;
+  if (!username || eggIndex === undefined || eggIndex < 0 || eggIndex > 2) {
+    return res.status(400).json({ success: false, message: 'Invalid pick parameter' });
+  }
+  username = username.toLowerCase();
+  try {
+    const session = await GameSession.findOne({ username, gameType: 'dragon_tower', status: 'active' });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'No active session found' });
+    }
+
+    const { currentLevel, towerBadEggs, betAmount, totalLevels } = session;
+    const badEggIndex = towerBadEggs[currentLevel - 1];
+    const hitBad = eggIndex === badEggIndex;
+
+    // Record this pick
+    session.revealedIndices.push(eggIndex);
+
+    if (hitBad) {
+      // LOSE
+      session.status = 'ended';
+      session.result = 'loss';
+      session.payout = 0;
+      await session.save();
+
+      await new GameHistory({
+        username,
+        game: 'dragon_tower',
+        betAmount,
+        result: 'loss',
+        payout: 0,
+        details: { level: currentLevel, hitBad: true, towerBadEggs }
+      }).save();
+
+      return res.json({
+        success: true,
+        status: 'ended',
+        result: 'loss',
+        payout: 0,
+        details: { level: currentLevel, hitBad: true, badEggIndex, towerBadEggs }
+      });
+    } else {
+      // SAFE
+      const multiplier = parseFloat((Math.pow(1.5, currentLevel)).toFixed(2));
+      const nextMultiplier = parseFloat((Math.pow(1.5, currentLevel + 1)).toFixed(2));
+      const currentWinnings = Math.floor(betAmount * multiplier);
+
+      if (currentLevel === totalLevels) {
+        // CONQUERED THE TOWER!
+        session.status = 'ended';
+        session.result = 'win';
+        session.payout = currentWinnings;
+        await session.save();
+
+        const user = await User.findOne({ username });
+        user.coins += currentWinnings;
+        await user.save();
+
+        await new GameHistory({
+          username,
+          game: 'dragon_tower',
+          betAmount,
+          result: 'win',
+          payout: currentWinnings,
+          details: { level: currentLevel, hitBad: false, towerBadEggs }
+        }).save();
+
+        new Activity({ user: username, action: `conquered the Dragon Tower for ${currentWinnings} coins!` }).save();
+
+        return res.json({
+          success: true,
+          status: 'ended',
+          result: 'win',
+          payout: currentWinnings,
+          coins: user.coins,
+          details: { level: currentLevel, hitBad: false, multiplier, towerBadEggs }
+        });
+      } else {
+        // Advance to next level
+        session.currentLevel += 1;
+        await session.save();
+
+        return res.json({
+          success: true,
+          status: 'active',
+          currentLevel: session.currentLevel,
+          multiplier,
+          nextMultiplier,
+          currentWinnings,
+          details: { level: currentLevel, hitBad: false, multiplier }
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Dragon Tower Pick Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/games/dragon_tower/cashout', async (req, res) => {
+  let { username } = req.body;
+  if (!username) {
+    return res.status(400).json({ success: false, message: 'Username required' });
+  }
+  username = username.toLowerCase();
+  try {
+    const session = await GameSession.findOne({ username, gameType: 'dragon_tower', status: 'active' });
+    if (!session) {
+      return res.status(404).json({ success: false, message: 'No active session found' });
+    }
+
+    const { currentLevel, betAmount, towerBadEggs } = session;
+    if (currentLevel <= 1) {
+      return res.status(400).json({ success: false, message: 'Cannot cashout before making at least one safe pick' });
+    }
+
+    const multiplier = parseFloat((Math.pow(1.5, currentLevel - 1)).toFixed(2));
+    const payout = Math.floor(betAmount * multiplier);
+
+    session.status = 'ended';
+    session.result = 'win';
+    session.payout = payout;
+    await session.save();
+
+    const user = await User.findOne({ username });
+    user.coins += payout;
+    await user.save();
+
+    await new GameHistory({
+      username,
+      game: 'dragon_tower',
+      betAmount,
+      result: 'win',
+      payout,
+      details: { level: currentLevel - 1, cashedOut: true, towerBadEggs }
+    }).save();
+
+    new Activity({ user: username, action: `cashed out ${payout} coins on Floor ${currentLevel - 1} in Dragon Tower` }).save();
+
+    res.json({
+      success: true,
+      payout,
+      coins: user.coins,
+      details: { level: currentLevel - 1, cashedOut: true, multiplier }
+    });
+  } catch (err) {
+    console.error('Dragon Tower Cashout Error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // --- STATEFUL CHICKEN GAME ---
 
 function calculateMultiplier(total, bones, revealed) {
