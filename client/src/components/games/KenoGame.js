@@ -65,9 +65,15 @@ export default function KenoGame({ user, onCoinsUpdate }) {
   const [tempHits, setTempHits] = useState([]);
   const [result, setResult] = useState(null);
 
+  const clearPreviousDraw = () => {
+    setResult(null);
+    setDrawnNumbers([]);
+    setTempHits([]);
+  };
+
   const handleCellClick = (num) => {
     if (playing) return;
-    setResult(null); // clear results when user starts interacting again
+    clearPreviousDraw();
 
     if (picks.includes(num)) {
       setPicks(picks.filter(p => p !== num));
@@ -82,7 +88,7 @@ export default function KenoGame({ user, onCoinsUpdate }) {
 
   const autoPick = () => {
     if (playing) return;
-    setResult(null);
+    clearPreviousDraw();
     const available = Array.from({ length: 40 }, (_, i) => i + 1);
     const selected = [];
     for (let i = 0; i < 10; i++) {
@@ -105,7 +111,7 @@ export default function KenoGame({ user, onCoinsUpdate }) {
   const clearPicks = () => {
     if (playing) return;
     setPicks([]);
-    setResult(null);
+    clearPreviousDraw();
   };
 
   const play = async () => {
@@ -220,7 +226,7 @@ export default function KenoGame({ user, onCoinsUpdate }) {
             <div className="keno-resolved-payout" style={{ color: win ? '#53fc18' : '#fff' }}>
               {win ? `+${result.payout} COINS` : `−${bet} COINS`}
             </div>
-            <button className="gp-adj play-again-btn" onClick={() => setResult(null)}>DISMISS</button>
+            <button className="gp-adj play-again-btn" onClick={clearPreviousDraw}>DISMISS</button>
           </div>
         ) : (
           <div className="keno-idle-panel">
@@ -290,7 +296,7 @@ export default function KenoGame({ user, onCoinsUpdate }) {
                   <button
                     key={r}
                     className={`risk-btn ${risk === r ? 'active' : ''}`}
-                    onClick={() => { if (!playing) setRisk(r); }}
+                    onClick={() => { if (!playing) { setRisk(r); clearPreviousDraw(); } }}
                     disabled={playing}
                   >
                     {r.toUpperCase()}
@@ -333,10 +339,10 @@ export default function KenoGame({ user, onCoinsUpdate }) {
                 value={bet}
                 min={1}
                 disabled={playing}
-                onChange={e => setBet(Math.max(1, +e.target.value))}
+                onChange={e => { setBet(Math.max(1, +e.target.value)); clearPreviousDraw(); }}
               />
-              <button className="gp-adj" onClick={() => setBet(Math.max(1, Math.floor(bet / 2)))} disabled={playing}>½</button>
-              <button className="gp-adj gp-adj-2x" style={{ '--adj-c': '#e91e63' }} onClick={() => setBet(bet * 2)} disabled={playing}>2×</button>
+              <button className="gp-adj" onClick={() => { setBet(Math.max(1, Math.floor(bet / 2))); clearPreviousDraw(); }} disabled={playing}>½</button>
+              <button className="gp-adj gp-adj-2x" style={{ '--adj-c': '#e91e63' }} onClick={() => { setBet(bet * 2); clearPreviousDraw(); }} disabled={playing}>2×</button>
             </div>
 
             {/* Main Action Button */}
