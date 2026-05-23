@@ -746,6 +746,88 @@ app.post('/api/games/play', async (req, res) => {
       const { pick } = params || {};
       if (pick === winnerIndex) { result = 'win'; payout = betAmount * 5; }
       details = { winnerIndex, pick };
+    } else if (game === 'keno') {
+      const { picks, risk = 'classic' } = params || {};
+      if (!Array.isArray(picks) || picks.length < 1 || picks.length > 10) {
+        return res.status(400).json({ success: false, message: 'Select between 1 and 10 numbers' });
+      }
+      const uniquePicks = [...new Set(picks)];
+      if (uniquePicks.length !== picks.length || !picks.every(p => p >= 1 && p <= 40)) {
+        return res.status(400).json({ success: false, message: 'Invalid numbers selected. Must be unique between 1 and 40.' });
+      }
+
+      // Draw 10 unique random numbers from 1 to 40
+      const pool = Array.from({ length: 40 }, (_, i) => i + 1);
+      const drawn = [];
+      for (let i = 0; i < 10; i++) {
+        const randIdx = Math.floor(Math.random() * pool.length);
+        drawn.push(pool[randIdx]);
+        pool.splice(randIdx, 1);
+      }
+
+      const hits = picks.filter(p => drawn.includes(p));
+      const hitCount = hits.length;
+
+      const kenoMultipliers = {
+        low: {
+          1: [0, 1.5],
+          2: [0, 1, 3.2],
+          3: [0, 1, 1.5, 5],
+          4: [0, 1, 1.2, 3, 10],
+          5: [0, 0.9, 1, 2, 8, 25],
+          6: [0, 0.9, 1, 1.5, 4, 15, 60],
+          7: [0, 0.9, 1, 1.2, 2.5, 10, 30, 120],
+          8: [0, 0.9, 1, 1.1, 2, 6, 18, 60, 200],
+          9: [0, 0.8, 0.9, 1.1, 1.5, 4, 12, 35, 100, 400],
+          10: [0, 0.8, 0.9, 1, 1.3, 2.5, 8, 22, 60, 180, 600]
+        },
+        classic: {
+          1: [0, 1.95],
+          2: [0, 0.9, 4],
+          3: [0, 0, 1.5, 9],
+          4: [0, 0, 1.2, 4, 18],
+          5: [0, 0, 1, 2.5, 10, 45],
+          6: [0, 0, 1, 1.5, 6, 25, 120],
+          7: [0, 0, 0.9, 1.2, 4, 12, 60, 280],
+          8: [0, 0, 0.9, 1, 2.5, 7, 30, 150, 500],
+          9: [0, 0, 0.8, 1, 1.8, 5, 18, 70, 250, 1000],
+          10: [0, 0, 0.5, 1, 1.4, 3, 9, 30, 110, 400, 1000]
+        },
+        medium: {
+          1: [0, 1.96],
+          2: [0, 0, 5],
+          3: [0, 0, 1.8, 12],
+          4: [0, 0, 0, 5, 25],
+          5: [0, 0, 0, 3, 15, 80],
+          6: [0, 0, 0, 1.8, 8, 40, 250],
+          7: [0, 0, 0, 1.5, 5, 20, 100, 500],
+          8: [0, 0, 0, 1.2, 3, 10, 50, 250, 900],
+          9: [0, 0, 0, 1, 2, 6, 25, 100, 450, 2000],
+          10: [0, 0, 0, 1, 1.5, 4, 10, 40, 180, 800, 3000]
+        },
+        high: {
+          1: [0, 1.98],
+          2: [0, 0, 6.5],
+          3: [0, 0, 0, 20],
+          4: [0, 0, 0, 0, 70],
+          5: [0, 0, 0, 0, 10, 250],
+          6: [0, 0, 0, 0, 5, 50, 600],
+          7: [0, 0, 0, 0, 3, 20, 150, 1200],
+          8: [0, 0, 0, 0, 2, 10, 50, 300, 3000],
+          9: [0, 0, 0, 0, 0, 5, 25, 150, 1000, 4000],
+          10: [0, 0, 0, 0, 0, 4.5, 15, 80, 400, 2500, 10000]
+        }
+      };
+
+      const selectedRisk = kenoMultipliers[risk] ? risk : 'classic';
+      const multipliers = kenoMultipliers[selectedRisk][picks.length];
+      const multiplier = multipliers[hitCount] || 0;
+
+      if (multiplier > 0) {
+        result = 'win';
+        payout = Math.floor(betAmount * multiplier);
+      }
+      details = { drawn, hits, multiplier, picks, risk: selectedRisk };
     }
 
     if (game === 'limbo') {
@@ -1381,7 +1463,7 @@ async function seedDatabase() {
     setInterval(async () => {
       try {
         const fakeUsers = ['CryptoKing', 'BetMaster', 'Jackpot777', 'SpinWin', 'HighRoller', 'LuckyStar', 'PrismPlayer', 'Whale99', 'DiceGod', 'LimboKing'];
-        const fakeGames = ['dice', 'limbo', 'mines', 'dragon_tower', 'chicken'];
+        const fakeGames = ['dice', 'limbo', 'mines', 'dragon_tower', 'chicken', 'keno'];
         
         const randomUser = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
         const randomGame = fakeGames[Math.floor(Math.random() * fakeGames.length)];

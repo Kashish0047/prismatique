@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const GameSessionSchema = new mongoose.Schema({
   username: { type: String, required: true, lowercase: true },
-  gameType: { type: String, enum: ['chicken', 'mines', 'dragon_tower'], required: true },
+  gameType: { type: String, enum: ['chicken', 'mines', 'dragon_tower', 'keno'], required: true },
   betAmount: { type: Number, required: true },
   boneCount: { type: Number, default: 1 }, // for chicken
   mineCount: { type: Number, default: 1 }, // for mines

@@ -12,6 +12,7 @@ const GAMES = [
   { id: 'mines',        name: 'MINES',        emoji: '💣', desc: 'Grid-based diamond hunt',     color: '#f59e0b', tag: 'STRATEGY',  image: 'https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=800' },
   { id: 'dragon_tower', name: 'DRAGON TOWER', emoji: '🐉', desc: 'Climb for massive rewards',    color: '#ef4444', tag: 'ADVENTURE', image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&q=80&w=800' },
   { id: 'chicken',      name: 'CHICKEN',      emoji: '🌟', desc: 'Find the rockstar chicken',   color: '#53fc18', tag: 'LUCKY',     image: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=800' },
+  { id: 'keno',         name: 'KENO',         emoji: '🎱', desc: 'Pick numbers, win big multipliers', color: '#e91e63', tag: 'LOTTERY',   image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&q=80&w=800' },
 ];
 
 export default function GamesHubPage() {

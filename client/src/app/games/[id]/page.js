@@ -8,6 +8,7 @@ import LimboGame from '@/components/games/LimboGame';
 import MinesGame from '@/components/games/MinesGame';
 import DragonTowerGame from '@/components/games/DragonTowerGame';
 import ChickenGame from '@/components/games/ChickenGame';
+import KenoGame from '@/components/games/KenoGame';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -17,6 +18,7 @@ const GAMES_META = {
   mines:        { name: 'MINES',        emoji: '💣', component: MinesGame,       color: '#f59e0b', tag: 'STRATEGY' },
   dragon_tower: { name: 'DRAGON TOWER', emoji: '🐉', component: DragonTowerGame, color: '#ef4444', tag: 'ADVENTURE' },
   chicken:      { name: 'CHICKEN',      emoji: '🌟', component: ChickenGame,     color: '#53fc18', tag: 'LUCKY' },
+  keno:         { name: 'KENO',         emoji: '🎱', component: KenoGame,        color: '#e91e63', tag: 'LOTTERY' },
 };
 
 export default function SingleGamePage({ params: paramsPromise }) {
