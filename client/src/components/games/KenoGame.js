@@ -66,6 +66,9 @@ export default function KenoGame({ user, onCoinsUpdate }) {
   const [result, setResult] = useState(null);
 
   const clearPreviousDraw = () => {
+    if (result || drawnNumbers.length > 0) {
+      setPicks([]);
+    }
     setResult(null);
     setDrawnNumbers([]);
     setTempHits([]);
