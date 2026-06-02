@@ -9,6 +9,6 @@ const UserSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },
   coins: { type: Number, default: 100 },
   lastClaim: { type: Date, default: null }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema);

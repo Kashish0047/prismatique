@@ -13,12 +13,13 @@ const User = require('./models/User');
 const Player = require('./models/Player');
 const Activity = require('./models/Activity');
 const GameHistory = require('./models/GameHistory');
+const Raffle = require('./models/Raffle');
+const Giveaway = require('./models/Giveaway');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/prismatique';
 
-// MongoDB Connection
 const connectDB = async () => {
   try {
     await mongoose.connect(MONGODB_URI, {
@@ -32,13 +33,11 @@ const connectDB = async () => {
     if (err.message.includes('ECONNREFUSED')) {
       console.log('💡 TIP: This is a DNS issue. Try changing your DNS to 8.8.8.8 or check your internet connection.');
     }
-    // Retry connection after 5 seconds
     setTimeout(connectDB, 5000);
   }
 };
 connectDB();
 
-// Middleware
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -58,7 +57,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// ========== PUPPETEER QUEUE SYSTEM ==========
 class PuppeteerQueue {
   constructor() {
     this.queue = [];
@@ -94,15 +92,10 @@ class PuppeteerQueue {
 
 const pQueue = new PuppeteerQueue();
 
-// In-memory stores
 const verificationCodes = new Map();
 const streamInfoCache = new Map();
-const activeFetches = new Set(); // Track usernames being fetched
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
-
-// Mock Database / State
-
-// ========== ROUTES ==========
+const activeFetches = new Set();
+const CACHE_DURATION = 15 * 60 * 1000;
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -119,17 +112,194 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/activity', async (req, res) => {
   try {
-    const activities = await Activity.find().sort({ timestamp: -1 }).limit(10);
-    // Format to match old UI expectation
+    const activities = await Activity.find({ action: { $not: /logged in/i } })
+      .sort({ timestamp: -1 })
+      .limit(10);
+      
+    const getTimeAgo = (date) => {
+      const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours}h ago`;
+      return `${Math.floor(hours / 24)}d ago`;
+    };
+
     const formatted = activities.map(a => ({
       id: a._id,
       user: a.user,
       action: a.action,
-      time: 'Just now' // Simplified for now
+      time: getTimeAgo(a.timestamp)
     }));
+    
     res.json({ success: true, data: formatted });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching activity" });
+  }
+});
+
+// --- ADMIN & RAFFLE ROUTES ---
+
+app.post('/api/admin/login', (req, res) => {
+  const { email, password } = req.body;
+  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+    res.json({ success: true, token: 'prism-admin-v1' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+app.get('/api/raffles', async (req, res) => {
+  try {
+    const raffles = await Raffle.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: raffles });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching raffles" });
+  }
+});
+
+app.post('/api/admin/raffles', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const raffle = new Raffle(req.body);
+    await raffle.save();
+    res.json({ success: true, data: raffle });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating raffle" });
+  }
+});
+
+app.put('/api/admin/raffles/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const raffle = await Raffle.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: raffle });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating raffle" });
+  }
+});
+
+app.delete('/api/admin/raffles/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    await Raffle.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting raffle" });
+  }
+});
+
+app.get('/api/giveaways', async (req, res) => {
+  try {
+    const giveaways = await Giveaway.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: giveaways });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching giveaways" });
+  }
+});
+
+app.post('/api/admin/giveaways', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const giveaway = new Giveaway(req.body);
+    await giveaway.save();
+    res.json({ success: true, data: giveaway });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating giveaway" });
+  }
+});
+
+app.put('/api/admin/giveaways/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const giveaway = await Giveaway.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: giveaway });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating giveaway" });
+  }
+});
+
+app.delete('/api/admin/giveaways/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    await Giveaway.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting giveaway" });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching users" });
+  }
+});
+
+app.post('/api/raffles/:id/enter', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Username required" });
+
+  try {
+    const raffle = await Raffle.findById(req.params.id);
+    if (!raffle) return res.status(404).json({ success: false, message: "Raffle not found" });
+    if (raffle.status !== 'active') return res.status(400).json({ success: false, message: "Raffle is not active" });
+
+    if (raffle.participants.includes(username)) {
+      return res.status(400).json({ success: false, message: "You are already registered!" });
+    }
+
+    if (raffle.entries >= raffle.maxEntries) {
+      return res.status(400).json({ success: false, message: "Raffle is full!" });
+    }
+
+    raffle.participants.push(username);
+    raffle.entries = raffle.participants.length;
+    await raffle.save();
+
+    res.json({ success: true, message: "Successfully registered for raffle!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error entering raffle" });
+  }
+});
+
+app.post('/api/giveaways/:id/enter', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Username required" });
+
+  try {
+    const giveaway = await Giveaway.findById(req.params.id);
+    if (!giveaway) return res.status(404).json({ success: false, message: "Giveaway not found" });
+    if (giveaway.status !== 'active') return res.status(400).json({ success: false, message: "Giveaway is not active" });
+
+    if (giveaway.participants.includes(username)) {
+      return res.status(400).json({ success: false, message: "You have already claimed this giveaway!" });
+    }
+
+    giveaway.participants.push(username);
+    await giveaway.save();
+
+    res.json({ success: true, message: "Giveaway successfully claimed!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error entering giveaway" });
   }
 });
 
@@ -147,9 +317,6 @@ app.post('/api/auth/start', async (req, res) => {
   res.json({ success: true, code });
 });
 
-// ========== KICK DATA FETCHING ==========
-
-// Lightweight API-only fetch (NO Puppeteer) — used for stream sidebar
 const fetchStreamInfoLightweight = async (username) => {
   const apis = [
     `https://kick.com/api/v2/channels/${username}`,
@@ -177,37 +344,30 @@ const fetchStreamInfoLightweight = async (username) => {
         category: d?.livestream?.categories?.[0]?.name || d?.recent_categories?.[0]?.name || 'Offline',
       };
     } catch (err) {
-      // Try next API
       continue;
     }
   }
-
-  // API blocked — return null (caller will use defaults)
   return null;
 };
 
-// Stream Info endpoint — fast, never blocks the server
 app.get('/api/kick/stream-info/:username', async (req, res) => {
   const { username } = req.params;
   const lowerUser = username.toLowerCase();
 
-  // Return cache if fresh (10 minutes for stream info)
   const cached = streamInfoCache.get(lowerUser);
-  if (cached && (Date.now() - cached.timestamp < 10 * 60 * 1000)) {
+  if (cached && (Date.now() - cached.timestamp < 5 * 60 * 1000)) {
     return res.json({ success: true, ...cached.data });
   }
 
-  // Try API (fast, ~1 second)
   let apiData = await fetchStreamInfoLightweight(username);
   
   if (!apiData) {
     if (activeFetches.has(lowerUser)) {
-      console.log(`⏳ [Stream] Fetch already in progress for ${username}, waiting for next cycle...`);
+      console.log(`⏳ [Stream] Fetch already in progress for ${username}`);
     } else {
       console.log(`🔄 [Stream] API blocked for ${username}, falling back to Puppeteer...`);
       activeFetches.add(lowerUser);
       try {
-        // Use the queue to fetch real data
         apiData = await pQueue.add(() => fetchKickDataViaPuppeteer(username));
       } catch (err) {
         console.error(`❌ [Stream] Puppeteer fallback failed:`, err.message);
@@ -223,125 +383,81 @@ app.get('/api/kick/stream-info/:username', async (req, res) => {
     return res.json({ success: true, ...result });
   }
 
-  // Final fallback to defaults if both failed
   const defaults = {
     exists: true,
-    followers: 400,
+    followers: 0,
     isLive: false,
     category: 'Slots',
   };
   return res.json({ success: true, ...defaults });
 });
 
-// ========== BIO VERIFICATION (uses Puppeteer — only for login) ==========
-
-// Comprehensive Scraper for Stream Info & Bio
-// Strategy: Navigate to Kick page to pass Cloudflare, then use in-page fetch() 
-// to call the API with valid cookies.
 const fetchKickDataViaPuppeteer = async (username) => {
   let browser = null;
   try {
     console.log(`🚀 [Puppeteer] Launching browser for ${username}...`);
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage', 
-        '--disable-gpu',
-        '--no-zygote',
-        '--single-process',
-        '--disable-extensions'
-      ]
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
     const page = await browser.newPage();
-    await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      if (['image', 'font', 'media'].includes(req.resourceType())) req.abort();
-      else req.continue();
-    });
-    
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-
-    // Navigate to pass Cloudflare challenge
-    try {
-      await page.goto(`https://kick.com/${username}`, { 
-        waitUntil: 'domcontentloaded', 
-        timeout: 30000 
-      });
-      // Wait for any element that indicates the page is loaded
-      await page.waitForSelector('body', { timeout: 10000 });
-    } catch (e) {
-      console.log(`⚠️ Puppeteer navigation warning for ${username}: ${e.message}`);
-    }
-
-    // Short wait for potential redirects or JS execution
-    await new Promise(r => setTimeout(r, 3000));
     
-    // Now use in-page fetch (browser has valid Cloudflare cookies)
-    if (!browser.isConnected() || page.isClosed()) throw new Error('Browser or page closed before evaluation');
+    await page.goto(`https://kick.com/${username}`, { 
+      waitUntil: 'networkidle2', 
+      timeout: 45000 
+    });
 
-    const apiData = await page.evaluate(async (user) => {
+    await page.waitForSelector('body', { timeout: 10000 });
+
+    const data = await page.evaluate(async (user) => {
       const timestamp = Date.now();
-      const apis = [
-        { url: `/api/v2/channels/${user}?t=${timestamp}`, version: 'v2' },
-        { url: `/api/v1/channels/${user}?t=${timestamp}`, version: 'v1' }
-      ];
-      
-      let data = { followers_count: 0, bio: '', livestream: null, version: 'none' };
-      
-      for (const api of apis) {
+      let followers = 0;
+      let bio = '';
+      let isLive = false;
+      let category = 'Offline';
+
+      try {
+        const res = await fetch(`/api/v2/channels/${user}?t=${timestamp}`);
+        if (res.ok) {
+          const json = await res.json();
+          const d = json.data || json;
+          followers = d.followers_count || d.followersCount || 0;
+          bio = d.user?.bio || d.bio || '';
+          isLive = !!(d.livestream && d.livestream.is_live);
+          category = d.livestream?.categories?.[0]?.name || 'Offline';
+        }
+      } catch (e) {}
+
+      if (!followers) {
         try {
-          const res = await fetch(api.url);
-          if (res.ok) {
-            const json = await res.json();
-            const d = json.data || json;
-            data.followers_count = d.followers_count || d.followersCount || 0;
-            data.bio = d.user?.bio || d.bio || '';
-            data.livestream = d.livestream || null;
-            data.version = api.version;
-            break; 
+          const followerEl = Array.from(document.querySelectorAll('span, div, p')).find(el => 
+            el.textContent.toLowerCase().includes('followers') && /\d/.test(el.textContent)
+          );
+          if (followerEl) {
+            const matches = followerEl.textContent.match(/[\d,.]+/);
+            if (matches) followers = parseInt(matches[0].replace(/,/g, ''), 10);
           }
         } catch (e) {}
       }
 
-      if (!data.bio) {
+      if (!bio) {
         try {
-          const bioElement = document.querySelector('.user-bio') || 
-                           document.querySelector('[data-test="user-bio"]') ||
-                           Array.from(document.querySelectorAll('span, p')).find(el => el.textContent.includes('PRIS-'));
-          if (bioElement) data.bio = bioElement.textContent;
+          const bioEl = document.querySelector('[data-test="user-bio"]') || document.querySelector('.user-bio');
+          if (bioEl) bio = bioEl.textContent;
         } catch (e) {}
       }
 
-      return data;
+      return { followers, bio, isLive, category };
     }, username);
 
-    if (apiData) {
-      console.log(`✅ [Puppeteer] Got data via in-page ${apiData.version} API for ${username}. Followers: ${apiData.followers_count}`);
-      return {
-        followers: apiData.followers_count,
-        isLive: !!(apiData.livestream && apiData.livestream.is_live !== false),
-        category: apiData.livestream?.categories?.[0]?.name || 'Offline',
-        bio: apiData.bio
-      };
-    }
-
-    console.log(`❌ [Puppeteer] In-page API fetch failed for ${username}`);
-    return null;
+    return data;
   } catch (err) {
     console.error(`❌ [Puppeteer] Error fetching ${username}:`, err.message);
     return null;
   } finally {
-    if (browser) {
-      try {
-        await browser.close();
-        console.log(`🛑 [Puppeteer] Browser closed for ${username}`);
-      } catch (e) {
-        console.error(`⚠️ [Puppeteer] Error closing browser:`, e.message);
-      }
-    }
+    if (browser) await browser.close();
   }
 };
 
@@ -355,11 +471,9 @@ app.post('/api/auth/confirm', async (req, res) => {
 
   console.log(`🔍 Verifying bio for ${username}... Expected code: ${expectedCode}`);
 
-  // For authentication, ALWAYS use Puppeteer to get the freshest data and bypass cache/blocks
   let data = await pQueue.add(() => fetchKickDataViaPuppeteer(username));
   let bio = data?.bio || '';
 
-  // If not found, wait 5 seconds and try one more time (Kick API can be slow to update)
   if (!bio || !bio.includes(expectedCode)) {
     console.log(`⏳ Code not found in first try for ${username}, retrying in 5s...`);
     await new Promise(r => setTimeout(r, 5000));
@@ -370,7 +484,6 @@ app.post('/api/auth/confirm', async (req, res) => {
   if (bio && bio.includes(expectedCode)) {
     verificationCodes.delete(username.toLowerCase());
     
-    // Save or update user in MongoDB
     try {
       let user = await User.findOne({ username: username.toLowerCase() });
       if (!user) {
@@ -391,7 +504,6 @@ app.post('/api/auth/confirm', async (req, res) => {
         }
       });
 
-      // Log activity
       new Activity({ user: username, action: "logged in" }).save();
     } catch (err) {
       console.error("DB Error during login:", err);
@@ -401,8 +513,6 @@ app.post('/api/auth/confirm', async (req, res) => {
     res.status(401).json({ success: false, message: "Code not found in bio. Make sure you saved it and your profile is public." });
   }
 });
-
-// ========== KICK OAUTH ROUTES ==========
 
 const base64URLEncode = (str) => {
   return str.toString('base64')
@@ -419,6 +529,7 @@ app.get('/api/auth/kick', (req, res) => {
   const state = crypto.randomBytes(32).toString('hex');
   const codeVerifier = base64URLEncode(crypto.randomBytes(32));
   const codeChallenge = base64URLEncode(sha256(Buffer.from(codeVerifier)));
+  const returnTo = req.query.return_to || '/';
 
   const cookieOptions = { 
     httpOnly: true, 
@@ -428,9 +539,10 @@ app.get('/api/auth/kick', (req, res) => {
     path: '/'
   };
   
-  console.log(`🔑 [OAuth] Starting for state: ${state}`);
+  console.log(`🔑 [OAuth] Starting for state: ${state}, returning to: ${returnTo}`);
   res.cookie('kick_auth_state', state, cookieOptions);
   res.cookie('kick_code_verifier', codeVerifier, cookieOptions);
+  res.cookie('kick_return_to', returnTo, cookieOptions);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -449,26 +561,20 @@ app.get('/api/auth/kick/callback', async (req, res) => {
   const { code, state, error } = req.query;
   const storedState = req.cookies.kick_auth_state;
   const codeVerifier = req.cookies.kick_code_verifier;
+  const returnTo = req.cookies.kick_return_to || '/';
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
 
   if (error) {
-    return res.redirect(`${clientUrl}?error=${error}`);
+    return res.redirect(`${clientUrl}${returnTo}?error=${error}`);
   }
 
   console.log('🔍 OAuth Callback received');
-  console.log('Cookies:', req.cookies);
-  console.log('Query State:', state);
-  console.log('Stored State:', storedState);
-
   if (!state || state !== storedState) {
     console.error('❌ State mismatch error');
-    console.error(`Received State: ${state}`);
-    console.error(`Stored State: ${storedState}`);
-    return res.redirect(`${clientUrl}?error=state_mismatch`);
+    return res.redirect(`${clientUrl}${returnTo}?error=state_mismatch`);
   }
 
   try {
-    // Exchange code for token
     const params = new URLSearchParams();
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
@@ -483,12 +589,10 @@ app.get('/api/auth/kick/callback', async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // Fetch user info
     const userResponse = await axios.get('https://api.kick.com/public/v1/users', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
 
-    // Handle Kick API response: { data: [...], message: "OK" }
     const kickUserRaw = userResponse.data;
     const kickUserData = (kickUserRaw?.data && kickUserRaw.data[0]) 
       ? kickUserRaw.data[0] 
@@ -496,7 +600,6 @@ app.get('/api/auth/kick/callback', async (req, res) => {
 
     const username = kickUserData.name || kickUserData.username || kickUserData.display_name;
     const avatar = kickUserData.profile_picture || kickUserData.profile_image || kickUserData.avatar_url || `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`;
-
 
     if (!username) throw new Error('Could not retrieve username from Kick API');
 
@@ -512,22 +615,19 @@ app.get('/api/auth/kick/callback', async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    // Log activity
     new Activity({ user: username, action: "logged in via Kick" }).save();
 
-    // Clear cookies
     res.clearCookie('kick_auth_state');
     res.clearCookie('kick_code_verifier');
+    res.clearCookie('kick_return_to');
 
-    // Redirect to frontend with success
-    res.redirect(`${clientUrl}?login_success=true&username=${user.username}&avatar=${encodeURIComponent(user.avatar)}&coins=${user.coins}`);
+    res.redirect(`${clientUrl}${returnTo}?login_success=true&username=${user.username}&avatar=${encodeURIComponent(user.avatar)}&coins=${user.coins}`);
   } catch (err) {
     console.error('❌ OAuth Detail Error:', err.response?.data || err.message);
-    res.redirect(`${clientUrl}?error=auth_failed&detail=${encodeURIComponent(JSON.stringify(err.response?.data || err.message))}`);
+    res.redirect(`${clientUrl}${returnTo}?error=auth_failed`);
   }
 });
 
-// ========== USER ROUTES ==========
 app.post('/api/user/follow', async (req, res) => {
   const { username, isFollowing } = req.body;
   if (!username) return res.status(400).json({ success: false });
@@ -543,8 +643,6 @@ app.post('/api/user/follow', async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-
-// ========== COINS ROUTES ==========
 
 app.get('/api/coins/balance/:username', async (req, res) => {
   try {
@@ -581,24 +679,28 @@ app.post('/api/coins/claim', async (req, res) => {
   }
 });
 
-// ========== GAMES ROUTE ==========
-
 app.post('/api/games/play', async (req, res) => {
   const { username, game, betAmount, params } = req.body;
   if (!username || !game || !betAmount || betAmount < 1) {
     return res.status(400).json({ success: false, message: 'Invalid request' });
   }
   try {
-    const user = await User.findOne({ username: username.toLowerCase() });
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    if (user.coins < betAmount) return res.status(400).json({ success: false, message: 'Not enough coins' });
+    let user = await User.findOne({ username: username.toLowerCase() });
+    if (!user) {
+      user = new User({
+        username: username.toLowerCase(),
+        avatar: `https://ui-avatars.com/api/?name=${username}&background=53fc18&color=000`,
+        coins: 100
+      });
+      await user.save();
+    }
+    if (user.coins < betAmount) return res.status(400).json({ success: false, message: 'Not enough coins. Use the Faucet to claim more!' });
 
     let result = 'loss';
     let payout = 0;
     let details = {};
 
     if (game === 'dice') {
-      // params: { target: 50, direction: 'over' | 'under' }
       const roll = Math.floor(Math.random() * 100) + 1;
       const { target, direction } = params;
       const win = direction === 'over' ? roll > target : roll < target;
@@ -608,7 +710,6 @@ app.post('/api/games/play', async (req, res) => {
       details = { roll, target, direction, multiplier };
 
     } else if (game === 'limbo') {
-      // params: { targetMultiplier: 2.5 }
       const { targetMultiplier } = params;
       const randomMultiplier = parseFloat((1 / (Math.random() * 0.97)).toFixed(2));
       if (randomMultiplier >= targetMultiplier) {
@@ -617,7 +718,6 @@ app.post('/api/games/play', async (req, res) => {
       details = { randomMultiplier, targetMultiplier };
 
     } else if (game === 'mines') {
-      // params: { mineCount: 5, revealedSafe: 3 }  - frontend tracks progress
       const { mineCount, revealedSafe } = params;
       const totalCells = 25;
       const safeCells = totalCells - mineCount;
@@ -626,13 +726,11 @@ app.post('/api/games/play', async (req, res) => {
         multiplier *= (safeCells - i) / (totalCells - i);
       }
       multiplier = parseFloat((0.97 / multiplier).toFixed(2));
-      // Determine if current reveal is a mine
       const hitMine = Math.random() < mineCount / (totalCells - revealedSafe);
       if (!hitMine) { result = 'win'; payout = Math.floor(betAmount * multiplier); }
       details = { mineCount, revealedSafe, multiplier, hitMine };
 
     } else if (game === 'dragon_tower') {
-      // params: { level: 1 }  1-5 levels; each level has 1 bad egg out of 3
       const { level } = params;
       const hitBad = Math.random() < 1 / 3;
       const multiplier = parseFloat((Math.pow(1.5, level)).toFixed(2));
@@ -640,21 +738,17 @@ app.post('/api/games/play', async (req, res) => {
       details = { level, multiplier, hitBad };
 
     } else if (game === 'chicken') {
-      // params: {}  pick 1 of 5, 1 wins (5x)
       const winnerIndex = Math.floor(Math.random() * 5);
       const { pick } = params;
       if (pick === winnerIndex) { result = 'win'; payout = betAmount * 5; }
       details = { winnerIndex, pick };
     }
 
-    // Update coins
     user.coins = result === 'win' ? user.coins - betAmount + payout : user.coins - betAmount;
     await user.save();
 
-    // Save game history
     await new GameHistory({ username: username.toLowerCase(), game, betAmount, result, payout, details }).save();
 
-    // Log activity
     if (result === 'win') {
       new Activity({ user: username, action: `won ${payout} coins in ${game}` }).save();
     }
@@ -666,9 +760,6 @@ app.post('/api/games/play', async (req, res) => {
   }
 });
 
-// ========== SERVER STARTUP ==========
-
-// Prevent crashes
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Rejection:', reason);
 });
@@ -680,7 +771,6 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`📡 Internal IP: http://127.0.0.1:${PORT}`);
   
-  // Prefetch stream info after a delay to avoid resource contention
   setTimeout(() => {
     console.log('📡 Prefetching Prismatique stream info...');
     if (activeFetches.has('prismatique')) return;
@@ -701,7 +791,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     }).finally(() => {
       activeFetches.delete('prismatique');
     });
-  }, 10000); // 10s delay
+  }, 10000);
 });
 
 server.on('error', (err) => {
@@ -711,7 +801,6 @@ server.on('error', (err) => {
   }
 });
 
-// ========== SEEDING LOGIC ==========
 async function seedDatabase() {
   try {
     const playerCount = await Player.countDocuments();
@@ -742,6 +831,41 @@ async function seedDatabase() {
       ];
       await Activity.insertMany(initialActivity);
     }
+
+    setInterval(async () => {
+      try {
+        const fakeUsers = ['CryptoKing', 'BetMaster', 'Jackpot777', 'SpinWin', 'HighRoller', 'LuckyStar', 'PrismPlayer', 'Whale99', 'DiceGod', 'LimboKing'];
+        const fakeGames = ['dice', 'limbo', 'mines', 'dragon_tower', 'chicken'];
+        
+        const randomUser = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
+        const randomGame = fakeGames[Math.floor(Math.random() * fakeGames.length)];
+        
+        const isWin = Math.random() > 0.6;
+        
+        let actionStr = '';
+        if (isWin) {
+          const winAmount = Math.floor(Math.random() * 500) + 50;
+          actionStr = `won ${winAmount} coins in ${randomGame}`;
+        } else {
+          const wagerAmount = Math.floor(Math.random() * 100) + 10;
+          actionStr = `wagered ${wagerAmount} coins in ${randomGame}`;
+        }
+
+        if (Math.random() > 0.9) {
+          const level = Math.floor(Math.random() * 50) + 2;
+          actionStr = `reached Level ${level}`;
+        }
+
+        await new Activity({ user: randomUser, action: actionStr, timestamp: new Date() }).save();
+        
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        await Activity.deleteMany({ timestamp: { $lt: yesterday } });
+        
+      } catch (e) {
+        console.error("Activity Simulator Error:", e.message);
+      }
+    }, 45000);
+
   } catch (err) {
     console.error("❌ Seeding Error:", err);
   }

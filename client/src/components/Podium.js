@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 export default function Podium({ top3 }) {
   return (
     <div className="podium-container">
-      {/* Second Place (Left) */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -18,7 +17,6 @@ export default function Podium({ top3 }) {
         <div className="podium-value">${(top3[1]?.wageredUsd || 0).toLocaleString()}</div>
       </motion.div>
 
-      {/* First Place (Center - BIG) */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -32,7 +30,6 @@ export default function Podium({ top3 }) {
         <div className="podium-value" style={{ fontSize: '2rem' }}>${(top3[0]?.wageredUsd || 0).toLocaleString()}</div>
       </motion.div>
 
-      {/* Third Place (Right) */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
