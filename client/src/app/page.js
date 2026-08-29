@@ -441,6 +441,7 @@ export default function Home() {
         </div>
       </section>
 
+      {false && (
       <section id="games-preview" className="games-preview-section">
         <div className="container">
           <div className="section-header-centered">
@@ -506,6 +507,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       <section className="homepage-leaderboard-preview section-padding">
         <div className="container">

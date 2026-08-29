@@ -53,8 +53,8 @@ const socials = [
   },
   {
     name: 'Discord',
-    handle: 'invite/prismatique',
-    url: 'https://discord.com/invite/prismatique',
+    handle: 'discord.gg/DVMcvPhVHA',
+    url: 'https://discord.gg/DVMcvPhVHA',
     icon: 'fab fa-discord',
     color: '#5865f2',
     desc: 'The community hub — chat, bonus alerts, raffle entries and direct support.',
