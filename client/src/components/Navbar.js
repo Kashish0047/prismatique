@@ -38,6 +38,8 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
           <li><Link href="/rankings" className="nav-link" onClick={() => setIsActive(false)}>RANKINGS</Link></li>
           <li><Link href="/faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</Link></li>
 
+          <li><Link href="/socials" className="nav-link" onClick={() => setIsActive(false)}>SOCIALS</Link></li>
+
           {user ? (
             <li className="mobile-only mobile-user-section">
               <div className="mobile-user-info">

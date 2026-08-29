@@ -85,44 +85,21 @@ export default function BonusesPage() {
           <div className="rainbet-highlight-card">
             <div className="rainbet-content">
               <div className="rainbet-badge pulse-badge">🔥 HOTTEST DEAL</div>
-              <h3 className="rainbet-title">RAINBET</h3>
-              <p className="rainbet-desc">High-stakes crypto casino with instant withdrawals and elite rewards. Experience the most trusted platform in the industry.</p>
+              <h3 className="rainbet-title">QZINO</h3>
+              <p className="rainbet-desc">Prismatique&apos;s exclusive new casino partner. Sign up with code PRIS50, make a deposit and clear the $2,000 wagering requirement (40x) to claim a $50 bonus. Enter PRIS50 during registration.</p>
               <div className="rainbet-features">
-                <span><i className="fas fa-bolt"></i> Instant Payout</span>
-                <span><i className="fas fa-crown"></i> VIP Rewards</span>
-                <span><i className="fas fa-coins"></i> High RTP</span>
+                <span>◆ $50 Bonus</span>
+                <span>◆ Deposit Bonus</span>
+                <span>◆ $2,000 Wagering (40x)</span>
+                <span>◆ Code: PRIS50</span>
               </div>
-              <a href="https://rainbet.com/?r=pris" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
+              <a href="https://qzino.ai" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
                 CLAIM EXCLUSIVE BONUS <i className="fas fa-arrow-right"></i>
               </a>
             </div>
             <div className="rainbet-visual">
-              <div className="rainbet-logo">RAINBET</div>
+              <div className="rainbet-logo">QZINO</div>
             </div>
-          </div>
-
-          <div className="bonus-grid" style={{ marginTop: '40px' }}>
-            <BonusCard 
-              name="96.COM" 
-              badge="TOP RATED" 
-              link="https://96game.fun/?channel_id=600061400&ma_token=JS-1JyHcMKeB54jpFC4tkWNd7ZgqdRLk&geo=IN"
-              desc="Asian gaming platform with exclusive bonuses and massive game selection."
-              features={["1000+ Games", "High RTP"]}
-            />
-            <BonusCard 
-              name="WHALE.IO" 
-              badge="PREMIUM" 
-              link="https://whalegames.gg/?tf_clickid=WIO019d548d4f8f7e29bfbb245d459ed259&pubid=432&offer_name=150_cpa_30_rs"
-              desc="Exclusive gaming platform with high-stakes bonuses and VIP treatment."
-              features={["VIP Club", "High Limits"]}
-            />
-            <BonusCard 
-              name="CHANCER" 
-              badge="NEW" 
-              link="#" 
-              desc="The future of social betting. Join the community and win big."
-              features={["Social Betting", "Instant Registration"]}
-            />
           </div>
         </div>
       </section>
@@ -178,23 +155,5 @@ export default function BonusesPage() {
         )}
       </AnimatePresence>
     </main>
-  );
-}
-
-function BonusCard({ name, badge, link, desc, features, isFeatured }) {
-  return (
-    <div className={`bonus-card ${isFeatured ? 'featured' : ''}`}>
-      <div className="bonus-badge">{badge}</div>
-      <h3 className="bonus-name">{name}</h3>
-      <p className="bonus-desc">{desc}</p>
-      <div className="bonus-features">
-        {features.map((f, i) => (
-          <span key={i} className="feature-tag">{f}</span>
-        ))}
-      </div>
-      <a href={link} target="_blank" rel="noopener noreferrer" className="bonus-button">
-        CLAIM NOW <i className="fas fa-arrow-right"></i>
-      </a>
-    </div>
   );
 }

@@ -3,20 +3,28 @@ import { useState } from 'react';
 
 const faqData = [
   {
-    question: "Is my money safe at these casinos?",
-    answer: "Absolutely! All our partner casinos operate under strict regulatory oversight with military-grade SSL encryption, certified RNG, and segregated funds for complete security."
+    question: "Who is Prismatique?",
+    answer: "Prismatique is a verified casino streamer broadcasting daily on Kick (kick.com/Prismatique) and Twitch (twitch.tv/prismatique). He plays high-volatility Hacksaw Gaming slots, KENO multipliers, and Mines, with frequent big-win moments shared on his YouTube clips channel."
   },
   {
-    question: "Do I need to enter a manual code?",
-    answer: "No! Our proprietary tracking system automatically applies your exclusive bonuses when you register through our links - no codes needed."
+    question: "What is the Qzino bonus code for Prismatique?",
+    answer: "The Qzino code is `PRIS50` — sign up at qzino.ai and enter PRIS50 during registration. Make a deposit and clear the $2,000 wagering requirement (40x) to claim your $50 bonus. Qzino is Prismatique's exclusive casino partner."
   },
   {
-    question: "Are bonuses automatic?",
-    answer: "Yes! All bonuses are 100% automatic and instant - applied immediately after registration through our links."
+    question: "Where can I watch Prismatique live?",
+    answer: "Prismatique streams primarily on Kick (kick.com/Prismatique) and simulcasts on Twitch (twitch.tv/prismatique). When live, the embedded player on prismatique.tv automatically shows the active stream and chat side-by-side."
   },
   {
-    question: "Can I participate in wager races from any casino?",
-    answer: "Yes! Most partners offer daily races, weekly tournaments, and monthly events with massive prize pools."
+    question: "What casino bonuses does Prismatique offer?",
+    answer: "Prismatique is an official Qzino partner. Enter code `PRIS50` at signup, then deposit and clear the $2,000 wagering requirement (40x) to claim a $50 bonus. Qzino is Prismatique's exclusive partner casino — no other operators are promoted on this site."
+  },
+  {
+    question: "What slots does Prismatique play?",
+    answer: "Prismatique focuses on high-volatility Hacksaw Gaming titles like Wanted Dead or a Wild, KENO multi-room sessions, and Mines for big multipliers. Recent clips on his YouTube include a 2254x Mines win and a Wanted spin that paid huge."
+  },
+  {
+    question: "Is Prismatique verified?",
+    answer: "Yes — Prismatique is verified on X (formerly Twitter) with a blue checkmark at x.com/Prismatiquee, and his Kick channel is established with active daily streams. All bonuses listed on prismatique.tv are direct affiliate partnerships."
   }
 ];
 

@@ -415,32 +415,20 @@ export default function Home() {
           <div className="rainbet-highlight-card">
             <div className="rainbet-content">
               <div className="rainbet-badge pulse-badge">🔥 HOTTEST DEAL</div>
-              <h3 className="rainbet-title">RAINBET</h3>
-              <p className="rainbet-desc">High-stakes crypto casino with instant withdrawals and elite rewards. Experience the most trusted platform in the industry.</p>
+              <h3 className="rainbet-title">QZINO</h3>
+              <p className="rainbet-desc">Prismatique&apos;s exclusive new casino partner. Sign up with code PRIS50, make a deposit and clear the $2,000 wagering requirement (40x) to claim a $50 bonus. Enter PRIS50 during registration.</p>
               <div className="rainbet-features">
-                <span><i className="fas fa-bolt"></i> Instant Payout</span>
-                <span><i className="fas fa-crown"></i> VIP Rewards</span>
-                <span><i className="fas fa-coins"></i> High RTP</span>
+                <span>◆ $50 Bonus</span>
+                <span>◆ Deposit Bonus</span>
+                <span>◆ $2,000 Wagering (40x)</span>
+                <span>◆ Code: PRIS50</span>
               </div>
-              <a href="https://rainbet.com/?r=pris" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
+              <a href="https://qzino.ai" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
                 CLAIM EXCLUSIVE BONUS <i className="fas fa-arrow-right"></i>
               </a>
             </div>
             <div className="rainbet-visual">
-              <div className="rainbet-logo">RAINBET</div>
-            </div>
-          </div>
-
-          <div className="other-bonuses-grid">
-            <div className="bonus-mini-card">
-              <h4>96.COM</h4>
-              <p>Asian gaming platform with massive game selection.</p>
-              <a href="https://96game.fun/?channel_id=600061400&ma_token=JS-1JyHcMKeB54jpFC4tkWNd7ZgqdRLk&geo=IN" target="_blank" rel="noopener noreferrer" className="bonus-mini-btn">VISIT</a>
-            </div>
-            <div className="bonus-mini-card">
-              <h4>WHALE.IO</h4>
-              <p>Exclusive platform with high-stakes bonuses.</p>
-              <a href="https://whalegames.gg/?tf_clickid=WIO019d548d4f8f7e29bfbb245d459ed259&pubid=432&offer_name=150_cpa_30_rs" target="_blank" rel="noopener noreferrer" className="bonus-mini-btn">VISIT</a>
+              <div className="rainbet-logo">QZINO</div>
             </div>
           </div>
 

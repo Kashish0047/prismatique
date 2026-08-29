@@ -2742,3 +2742,108 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
 .Toastify__toast-container {
   z-index: 999999 !important;
 }
+
+/* ===== Socials page ===== */
+.socials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.social-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 30px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--glass-border);
+  text-decoration: none;
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.social-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--brand) 18%, transparent), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.social-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--brand);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.social-card:hover::before {
+  opacity: 1;
+}
+
+.social-card-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+.social-card-body {
+  position: relative;
+  flex: 1;
+}
+
+.social-card-body h3 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.social-card-handle {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--brand);
+  margin: 4px 0 12px;
+}
+
+.social-card-body p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.social-card-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  transition: gap 0.25s ease;
+}
+
+.social-card:hover .social-card-cta {
+  gap: 14px;
+  color: var(--brand);
+}
+
+@media (max-width: 520px) {
+  .socials-grid { grid-template-columns: 1fr; }
+}

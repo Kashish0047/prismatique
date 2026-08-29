@@ -87,7 +87,7 @@ export default function AdminPortal() {
               type="email" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
-              placeholder="admin@prismatique.com"
+              placeholder="prismatiquebonuses@gmail.com"
               required 
             />
           </div>
