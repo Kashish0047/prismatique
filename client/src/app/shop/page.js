@@ -1,0 +1,110 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+export default function ShopPage() {
+  const [user, setUser] = useState(null);
+  const [coins, setCoins] = useState(0);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('prism_auth_v2');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        setCoins(parsed.coins || 0);
+      } catch (e) {}
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = window.location.pathname;
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('prism_auth_v2');
+    sessionStorage.setItem('just_logged_out', 'true');
+    setUser(null);
+    setCoins(0);
+    window.location.replace(window.location.pathname);
+  };
+
+  const startLogin = () => {
+    sessionStorage.removeItem('just_logged_out');
+    window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
+  };
+
+  return (
+    <main className="min-h-screen bg-dark">
+      <Navbar
+        user={user}
+        onLogout={handleLogout}
+        onLoginClick={startLogin}
+        coins={coins}
+      />
+
+      <section className="section-padding pt-32">
+        <div className="container">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <h1 className="section-title">PRISMATIQUE <span className="highlight-blue">SHOP</span></h1>
+            <p className="page-subtitle">Redeem your coins for exclusive rewards, merch and more.</p>
+          </motion.div>
+
+          <div className="rewards-content-wrapper">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="wager-rewards-coming"
+            >
+              <div className="coming-soon-card-premium">
+                <div className="glass-effect"></div>
+                <motion.div
+                  className="coming-soon-icon"
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ repeat: Infinity, duration: 4 }}
+                >
+                  🛍️
+                </motion.div>
+                <h3>SHOP COMING SOON</h3>
+                <p>The Prismatique rewards store is being built. Soon you&apos;ll be able to spend your coins on gift cards, exclusive merch, bonus buys and more.</p>
+                <div className="coming-soon-badge-premium">
+                  <span className="pulse-dot"></span>
+                  DEVELOPMENT IN PROGRESS
+                </div>
+                <div className="coming-soon-footer">
+                  STAY TUNED FOR THE ELITE LAUNCH
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <div className="container">
+          <p>&copy; 2024 PRISMATIQUE. ALL RIGHTS RESERVED.</p>
+        </div>
+      </footer>
+    </main>
+  );
+}

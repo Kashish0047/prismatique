@@ -25,16 +25,27 @@ export default function AdminDashboard({ onLogout }) {
   const [raffles, setRaffles] = useState([]);
   const [giveaways, setGiveaways] = useState([]);
   const [users, setUsers] = useState([]);
+  const [challenges, setChallenges] = useState([]);
+  const [leaderboards, setLeaderboards] = useState([]);
+  const [defaultApiKey, setDefaultApiKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
-  const [modalType, setModalType] = useState('raffle'); // 'raffle' or 'giveaway'
-  
+  const [modalType, setModalType] = useState('raffle'); // 'raffle' | 'giveaway' | 'challenge' | 'leaderboard'
+
   const [newRaffle, setNewRaffle] = useState({
     title: '', prize: '', description: '', requirement: '', status: 'active', maxEntries: 1000
   });
 
   const [newGiveaway, setNewGiveaway] = useState({
     title: '', prize: '', description: '', code: '', status: 'active'
+  });
+
+  const [newChallenge, setNewChallenge] = useState({
+    title: '', prize: '', description: '', requirement: '', type: 'display', status: 'active', maxEntries: 1000
+  });
+
+  const [newLeaderboard, setNewLeaderboard] = useState({
+    name: '', platform: '', apiKey: '', limit: 20, prizeText: '', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
   });
 
   const [viewingParticipants, setViewingParticipants] = useState(null);
@@ -57,6 +68,13 @@ export default function AdminDashboard({ onLogout }) {
       } else if (activeTab === 'users') {
         const res = await axios.get(`${API}/admin/users`, { headers: { token } });
         setUsers(res.data.data);
+      } else if (activeTab === 'challenges') {
+        const res = await axios.get(`${API}/admin/challenges`, { headers: { token } });
+        setChallenges(res.data.data);
+      } else if (activeTab === 'leaderboards') {
+        const res = await axios.get(`${API}/admin/leaderboards`, { headers: { token } });
+        setLeaderboards(res.data.data);
+        setDefaultApiKey(res.data.defaultApiKey || '');
       }
     } catch (err) {
       console.error(err);
@@ -91,13 +109,68 @@ export default function AdminDashboard({ onLogout }) {
     }
   };
 
+  const handleCreateChallenge = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/admin/challenges`, newChallenge, { headers: { token } });
+      setIsAdding(false);
+      fetchAllData();
+      toast.success('Challenge created successfully!');
+      setNewChallenge({ title: '', prize: '', description: '', requirement: '', type: 'display', status: 'active', maxEntries: 1000 });
+    } catch (err) {
+      toast.error('Error creating challenge');
+    }
+  };
+
+  const handleCreateLeaderboard = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/admin/leaderboards`, newLeaderboard, { headers: { token } });
+      setIsAdding(false);
+      fetchAllData();
+      toast.success('Leaderboard created successfully!');
+      setNewLeaderboard({ name: '', platform: '', apiKey: '', limit: 20, prizeText: '', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true });
+    } catch (err) {
+      toast.error('Error creating leaderboard');
+    }
+  };
+
+  const handleResetLeaderboard = (id, name) => {
+    toast(({ closeToast }) => (
+      <div className="confirm-toast">
+        <div className="confirm-toast-header">
+          <span className="warning-icon">🔄</span>
+          <h4>RESET "{name}"?</h4>
+        </div>
+        <p>The current period standings will be archived and the board will start fresh from now.</p>
+        <div className="confirm-actions">
+          <button className="confirm-no" onClick={closeToast}>CANCEL</button>
+          <button className="confirm-yes" onClick={async () => {
+            try {
+              const adminToken = localStorage.getItem('prism_admin_token');
+              const res = await axios.post(`${API}/admin/leaderboards/${id}/reset`, {}, { headers: { token: adminToken } });
+              if (res.data.success) {
+                toast.dismiss();
+                toast.success('LEADERBOARD RESET — PREVIOUS PERIOD ARCHIVED');
+                fetchAllData();
+              }
+            } catch (err) {
+              toast.error(err.response?.data?.message || 'Failed to reset leaderboard');
+            }
+          }}>YES, RESET</button>
+        </div>
+      </div>
+    ), { autoClose: false, closeOnClick: false, position: "top-center" });
+  };
+
   const handleDelete = (id, type) => {
     toast(({ closeToast }) => (
       <ConfirmDelete 
         type={type}
         onConfirm={async () => {
           try {
-            const endpoint = type === 'raffle' ? 'raffles' : 'giveaways';
+            const endpointMap = { raffle: 'raffles', giveaway: 'giveaways', challenge: 'challenges', leaderboard: 'leaderboards' };
+            const endpoint = endpointMap[type] || 'raffles';
             const adminToken = localStorage.getItem('prism_admin_token');
             const res = await axios.delete(`${API}/admin/${endpoint}/${id}`, { 
               headers: { token: adminToken } 
@@ -139,6 +212,12 @@ export default function AdminDashboard({ onLogout }) {
             <button className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
               👥 USERS
             </button>
+            <button className={`admin-nav-item ${activeTab === 'challenges' ? 'active' : ''}`} onClick={() => setActiveTab('challenges')}>
+              🎯 CHALLENGES
+            </button>
+            <button className={`admin-nav-item ${activeTab === 'leaderboards' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboards')}>
+              📊 LEADERBOARDS
+            </button>
           </nav>
           <button className="admin-logout-btn" onClick={onLogout}>LOGOUT</button>
         </aside>
@@ -148,6 +227,8 @@ export default function AdminDashboard({ onLogout }) {
             <h1>{activeTab.toUpperCase()}</h1>
             {activeTab === 'raffles' && <button className="admin-add-btn" onClick={() => { setModalType('raffle'); setIsAdding(true); }}>+ NEW RAFFLE</button>}
             {activeTab === 'giveaways' && <button className="admin-add-btn" onClick={() => { setModalType('giveaway'); setIsAdding(true); }}>+ NEW GIVEAWAY</button>}
+            {activeTab === 'challenges' && <button className="admin-add-btn" onClick={() => { setModalType('challenge'); setIsAdding(true); }}>+ NEW CHALLENGE</button>}
+            {activeTab === 'leaderboards' && <button className="admin-add-btn" onClick={() => { setModalType('leaderboard'); setNewLeaderboard(s => ({ ...s, apiKey: s.apiKey || defaultApiKey })); setIsAdding(true); }}>+ NEW LEADERBOARD</button>}
           </header>
 
           <div className="admin-content">
@@ -239,6 +320,63 @@ export default function AdminDashboard({ onLogout }) {
                     </table>
                   </div>
                 )}
+
+                {activeTab === 'challenges' && (
+                  <div className="admin-table-wrapper">
+                    <table className="admin-table">
+                      <thead>
+                        <tr><th>TITLE</th><th>PRIZE</th><th>TYPE</th><th>STATUS</th><th>ENTRIES</th><th>PARTICIPANTS</th><th>ACTIONS</th></tr>
+                      </thead>
+                      <tbody>
+                        {challenges.map(c => (
+                          <tr key={c._id}>
+                            <td>{c.title}</td><td>{c.prize}</td>
+                            <td><span className="status-pill upcoming">{c.type}</span></td>
+                            <td><span className={`status-pill ${c.status}`}>{c.status}</span></td>
+                            <td>{c.type === 'enterable' ? `${c.entries}/${c.maxEntries}` : '—'}</td>
+                            <td>
+                              <div className="participants-preview">
+                                {c.participants && c.participants.length > 0 ? (
+                                  <button className="view-list-btn" onClick={() => setViewingParticipants({ ...c, type: 'Challenge' })}>
+                                    👤 {c.participants.length} VIEW LIST
+                                  </button>
+                                ) : 'None'}
+                              </div>
+                            </td>
+                            <td><button className="action-btn delete" onClick={() => handleDelete(c._id, 'challenge')}>🗑️</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {activeTab === 'leaderboards' && (
+                  <div className="admin-table-wrapper">
+                    <table className="admin-table">
+                      <thead>
+                        <tr><th>NAME</th><th>PLATFORM</th><th>ACTIVE</th><th>PERIOD STARTED</th><th>ACTIONS</th></tr>
+                      </thead>
+                      <tbody>
+                        {leaderboards.map(lb => (
+                          <tr key={lb._id}>
+                            <td>{lb.name}</td>
+                            <td>{lb.platform || '—'}</td>
+                            <td><span className={`status-pill ${lb.active ? 'active' : 'ended'}`}>{lb.active ? 'yes' : 'no'}</span></td>
+                            <td>{lb.periodStartedAt ? new Date(lb.periodStartedAt).toLocaleDateString() : 'N/A'}</td>
+                            <td style={{ display: 'flex', gap: '8px' }}>
+                              <button className="view-list-btn" onClick={() => handleResetLeaderboard(lb._id, lb.name)}>🔄 RESET</button>
+                              <button className="action-btn delete" onClick={() => handleDelete(lb._id, 'leaderboard')}>🗑️</button>
+                            </td>
+                          </tr>
+                        ))}
+                        {leaderboards.length === 0 && (
+                          <tr><td colSpan={5} style={{ opacity: 0.5 }}>No leaderboards yet. Click "+ NEW LEADERBOARD".</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -250,11 +388,13 @@ export default function AdminDashboard({ onLogout }) {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="admin-modal-overlay">
             <motion.div initial={{ y: 50 }} animate={{ y: 0 }} className="admin-modal glass-panel">
               <h3>CREATE NEW {modalType.toUpperCase()}</h3>
+
+              {(modalType === 'raffle' || modalType === 'giveaway') && (
               <form onSubmit={modalType === 'raffle' ? handleCreateRaffle : handleCreateGiveaway} className="admin-form">
                 <input placeholder="Title" required value={modalType === 'raffle' ? newRaffle.title : newGiveaway.title} onChange={(e) => modalType === 'raffle' ? setNewRaffle({...newRaffle, title: e.target.value}) : setNewGiveaway({...newGiveaway, title: e.target.value})} />
                 <input placeholder="Prize" required value={modalType === 'raffle' ? newRaffle.prize : newGiveaway.prize} onChange={(e) => modalType === 'raffle' ? setNewRaffle({...newRaffle, prize: e.target.value}) : setNewGiveaway({...newGiveaway, prize: e.target.value})} />
                 <textarea placeholder="Description" value={modalType === 'raffle' ? newRaffle.description : newGiveaway.description} onChange={(e) => modalType === 'raffle' ? setNewRaffle({...newRaffle, description: e.target.value}) : setNewGiveaway({...newGiveaway, description: e.target.value})} />
-                
+
                 {modalType === 'raffle' ? (
                   <>
                     <input placeholder="Requirement" value={newRaffle.requirement} onChange={(e) => setNewRaffle({...newRaffle, requirement: e.target.value})} />
@@ -279,6 +419,51 @@ export default function AdminDashboard({ onLogout }) {
                   <button type="submit" className="confirm-btn">CREATE</button>
                 </div>
               </form>
+              )}
+
+              {modalType === 'challenge' && (
+              <form onSubmit={handleCreateChallenge} className="admin-form">
+                <input placeholder="Title" required value={newChallenge.title} onChange={(e) => setNewChallenge({...newChallenge, title: e.target.value})} />
+                <input placeholder="Prize" required value={newChallenge.prize} onChange={(e) => setNewChallenge({...newChallenge, prize: e.target.value})} />
+                <textarea placeholder="Description" value={newChallenge.description} onChange={(e) => setNewChallenge({...newChallenge, description: e.target.value})} />
+                <input placeholder="Requirement (e.g. Wager $500 on Qzino)" value={newChallenge.requirement} onChange={(e) => setNewChallenge({...newChallenge, requirement: e.target.value})} />
+                <div className="form-row">
+                  <select value={newChallenge.type} onChange={(e) => setNewChallenge({...newChallenge, type: e.target.value})}>
+                    <option value="display">Display only</option>
+                    <option value="enterable">Enterable (users can join)</option>
+                  </select>
+                  <select value={newChallenge.status} onChange={(e) => setNewChallenge({...newChallenge, status: e.target.value})}>
+                    <option value="active">Active</option><option value="upcoming">Upcoming</option><option value="ended">Ended</option>
+                  </select>
+                </div>
+                {newChallenge.type === 'enterable' && (
+                  <input type="number" placeholder="Max Entries" value={newChallenge.maxEntries} onChange={(e) => setNewChallenge({...newChallenge, maxEntries: parseInt(e.target.value) || 0})} />
+                )}
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setIsAdding(false)}>CANCEL</button>
+                  <button type="submit" className="confirm-btn">CREATE</button>
+                </div>
+              </form>
+              )}
+
+              {modalType === 'leaderboard' && (
+              <form onSubmit={handleCreateLeaderboard} className="admin-form">
+                <input placeholder="Name (e.g. Qzino Monthly Wager)" required value={newLeaderboard.name} onChange={(e) => setNewLeaderboard({...newLeaderboard, name: e.target.value})} />
+                <input placeholder="Platform label / tab name (e.g. Qzino)" value={newLeaderboard.platform} onChange={(e) => setNewLeaderboard({...newLeaderboard, platform: e.target.value})} />
+                <input placeholder="StreamNeeds API key (bh_sk_...)" required value={newLeaderboard.apiKey} onChange={(e) => setNewLeaderboard({...newLeaderboard, apiKey: e.target.value})} />
+                <textarea placeholder="Prize breakdown text (e.g. 1st $250 · 2nd $100 · 3rd $50)" value={newLeaderboard.prizeText} onChange={(e) => setNewLeaderboard({...newLeaderboard, prizeText: e.target.value})} />
+                <div className="form-row">
+                  <input type="number" placeholder="Show top N" value={newLeaderboard.limit} onChange={(e) => setNewLeaderboard({...newLeaderboard, limit: parseInt(e.target.value) || 20})} />
+                  <input type="number" placeholder="Sort order" value={newLeaderboard.order} onChange={(e) => setNewLeaderboard({...newLeaderboard, order: parseInt(e.target.value) || 0})} />
+                </div>
+                <label className="admin-check"><input type="checkbox" checked={newLeaderboard.active} onChange={(e) => setNewLeaderboard({...newLeaderboard, active: e.target.checked})} /> Active (visible on site)</label>
+                <label className="admin-check"><input type="checkbox" checked={newLeaderboard.useBaseline} onChange={(e) => setNewLeaderboard({...newLeaderboard, useBaseline: e.target.checked})} /> Per-period board (subtract points captured at each reset)</label>
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setIsAdding(false)}>CANCEL</button>
+                  <button type="submit" className="confirm-btn">CREATE</button>
+                </div>
+              </form>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -354,6 +539,8 @@ export default function AdminDashboard({ onLogout }) {
         .admin-modal h3 { font-size: 1.5rem; font-weight: 900; margin-bottom: 30px; text-align: center; }
         .admin-form { display: flex; flex-direction: column; gap: 20px; }
         .admin-form input, .admin-form textarea, .admin-form select { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; color: #fff; font-weight: 600; outline: none; }
+        .admin-check { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer; }
+        .admin-check input { width: auto; }
         .admin-form textarea { height: 100px; resize: none; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }

@@ -423,7 +423,7 @@ export default function Home() {
                 <span>◆ $2,000 Wagering (40x)</span>
                 <span>◆ Code: PRIS50</span>
               </div>
-              <a href="https://qzino.ai" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
+              <a href="https://qzino-partners.com/t6qecmcl8" target="_blank" rel="noopener noreferrer" className="rainbet-btn">
                 CLAIM EXCLUSIVE BONUS <i className="fas fa-arrow-right"></i>
               </a>
             </div>

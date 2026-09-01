@@ -16,6 +16,9 @@ const GameHistory = require('./models/GameHistory');
 const Raffle = require('./models/Raffle');
 const Giveaway = require('./models/Giveaway');
 const GameSession = require('./models/GameSession');
+const Challenge = require('./models/Challenge');
+const Leaderboard = require('./models/Leaderboard');
+const LeaderboardHistory = require('./models/LeaderboardHistory');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -99,6 +102,74 @@ const verificationCodes = new Map();
 const streamInfoCache = new Map();
 const activeFetches = new Set();
 const CACHE_DURATION = 15 * 60 * 1000;
+
+// --- StreamNeeds leaderboard integration ---
+// Use the www host directly — the apex domain 307-redirects and the
+// Authorization header is dropped on the cross-host hop (→ 401).
+const STREAMNEEDS_BASE = 'https://www.streamneeds.com';
+const leaderboardCache = new Map(); // key: `${apiKey}|${limit}` -> { timestamp, data }
+const LEADERBOARD_CACHE_MS = 60 * 1000;
+
+async function fetchStreamneeds(apiKey, limit = 20) {
+  const cacheKey = `${apiKey}|${limit}`;
+  const cached = leaderboardCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < LEADERBOARD_CACHE_MS) {
+    return cached.data;
+  }
+
+  const resp = await axios.get(`${STREAMNEEDS_BASE}/api/public/leaderboard`, {
+    params: { limit },
+    headers: { Authorization: `Bearer ${apiKey}` },
+    timeout: 15000
+  });
+
+  const rows = Array.isArray(resp.data?.leaderboard) ? resp.data.leaderboard : [];
+  const data = rows.map((r, i) => ({
+    rank: r.rank || i + 1,
+    viewerId: r.viewerId || r.viewer_id || String(i),
+    points: Number(r.points) || 0,
+    username: r.username || 'Unknown',
+    avatar: r.avatar || '',
+    verified: !!r.verified,
+    platforms: r.platforms || {}
+  }));
+
+  leaderboardCache.set(cacheKey, { timestamp: Date.now(), data });
+  return data;
+}
+
+// Apply the per-period baseline (if enabled) and re-rank.
+function computeStandings(board, live) {
+  let rows = live;
+  if (board.useBaseline) {
+    const base = board.baseline || {};
+    rows = live
+      .map(r => ({ ...r, points: Math.max(0, r.points - (Number(base[r.viewerId]) || 0)) }))
+      .filter(r => r.points > 0);
+  }
+  rows = [...rows].sort((a, b) => b.points - a.points);
+  return rows.map((r, i) => ({
+    rank: i + 1,
+    username: r.username,
+    avatar: r.avatar,
+    points: r.points,
+    verified: r.verified,
+    platforms: r.platforms
+  }));
+}
+
+function publicBoard(b) {
+  return {
+    _id: b._id,
+    name: b.name,
+    platform: b.platform,
+    prizeText: b.prizeText,
+    accentColor: b.accentColor,
+    order: b.order,
+    periodStartedAt: b.periodStartedAt,
+    lastResetAt: b.lastResetAt
+  };
+}
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -303,6 +374,212 @@ app.post('/api/giveaways/:id/enter', async (req, res) => {
     res.json({ success: true, message: "Giveaway successfully claimed!" });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error entering giveaway" });
+  }
+});
+
+// --- CHALLENGES ---
+
+app.get('/api/challenges', async (req, res) => {
+  try {
+    const challenges = await Challenge.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: challenges });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching challenges" });
+  }
+});
+
+app.get('/api/admin/challenges', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const challenges = await Challenge.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: challenges });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching challenges" });
+  }
+});
+
+app.post('/api/admin/challenges', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const challenge = new Challenge(req.body);
+    await challenge.save();
+    res.json({ success: true, data: challenge });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating challenge" });
+  }
+});
+
+app.put('/api/admin/challenges/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const challenge = await Challenge.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: challenge });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating challenge" });
+  }
+});
+
+app.delete('/api/admin/challenges/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    await Challenge.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting challenge" });
+  }
+});
+
+app.post('/api/challenges/:id/enter', async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ success: false, message: "Username required" });
+
+  try {
+    const challenge = await Challenge.findById(req.params.id);
+    if (!challenge) return res.status(404).json({ success: false, message: "Challenge not found" });
+    if (challenge.type !== 'enterable') return res.status(400).json({ success: false, message: "This challenge is not open for entries" });
+    if (challenge.status !== 'active') return res.status(400).json({ success: false, message: "Challenge is not active" });
+
+    if (challenge.participants.includes(username)) {
+      return res.status(400).json({ success: false, message: "You are already registered!" });
+    }
+    if (challenge.entries >= challenge.maxEntries) {
+      return res.status(400).json({ success: false, message: "Challenge is full!" });
+    }
+
+    challenge.participants.push(username);
+    challenge.entries = challenge.participants.length;
+    await challenge.save();
+
+    res.json({ success: true, message: "Successfully joined the challenge!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error entering challenge" });
+  }
+});
+
+// --- WAGER-REWARDS LEADERBOARDS (StreamNeeds-backed) ---
+
+app.get('/api/leaderboards', async (req, res) => {
+  try {
+    const boards = await Leaderboard.find({ active: true }).sort({ order: 1, createdAt: 1 });
+    res.json({ success: true, data: boards.map(publicBoard) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching leaderboards" });
+  }
+});
+
+app.get('/api/leaderboards/:id/standings', async (req, res) => {
+  try {
+    const board = await Leaderboard.findById(req.params.id);
+    if (!board || !board.active) return res.status(404).json({ success: false, message: "Leaderboard not found" });
+
+    let standings = [];
+    try {
+      const live = await fetchStreamneeds(board.apiKey, board.limit);
+      standings = computeStandings(board, live);
+    } catch (apiErr) {
+      console.error('StreamNeeds fetch failed:', apiErr.response?.status || apiErr.message);
+      return res.json({ success: false, message: "Leaderboard data is temporarily unavailable", board: publicBoard(board), standings: [] });
+    }
+
+    res.json({ success: true, board: publicBoard(board), standings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching standings" });
+  }
+});
+
+app.get('/api/leaderboards/:id/history', async (req, res) => {
+  try {
+    const history = await LeaderboardHistory.find({ leaderboardId: req.params.id }).sort({ periodEnd: -1 }).limit(24);
+    res.json({ success: true, data: history });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching history" });
+  }
+});
+
+app.get('/api/admin/leaderboards', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const boards = await Leaderboard.find().sort({ order: 1, createdAt: 1 });
+    res.json({ success: true, data: boards, defaultApiKey: process.env.STREAMNEEDS_API_KEY || '' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching leaderboards" });
+  }
+});
+
+app.post('/api/admin/leaderboards', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const board = new Leaderboard(req.body);
+    await board.save();
+    res.json({ success: true, data: board });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating leaderboard" });
+  }
+});
+
+app.put('/api/admin/leaderboards/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const board = await Leaderboard.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: board });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating leaderboard" });
+  }
+});
+
+app.delete('/api/admin/leaderboards/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    await Leaderboard.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting leaderboard" });
+  }
+});
+
+app.post('/api/admin/leaderboards/:id/reset', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const board = await Leaderboard.findById(req.params.id);
+    if (!board) return res.status(404).json({ success: false, message: "Leaderboard not found" });
+
+    const live = await fetchStreamneeds(board.apiKey, board.limit);
+    const now = new Date();
+
+    await new LeaderboardHistory({
+      leaderboardId: board._id,
+      name: board.name,
+      platform: board.platform,
+      periodStart: board.periodStartedAt,
+      periodEnd: now,
+      standings: computeStandings(board, live)
+    }).save();
+
+    const newBaseline = {};
+    live.forEach(r => { newBaseline[r.viewerId] = r.points; });
+
+    board.baseline = newBaseline;
+    board.periodStartedAt = now;
+    board.lastResetAt = now;
+    board.markModified('baseline');
+    await board.save();
+
+    // bust cache so the next standings call reflects the reset
+    leaderboardCache.delete(`${board.apiKey}|${board.limit}`);
+
+    res.json({ success: true, message: "Leaderboard reset. Previous period archived." });
+  } catch (err) {
+    console.error('Leaderboard reset failed:', err.response?.status || err.message);
+    res.status(500).json({ success: false, message: "Error resetting leaderboard (StreamNeeds unreachable?)" });
   }
 });
 
