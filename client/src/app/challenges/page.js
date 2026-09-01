@@ -108,7 +108,7 @@ export default function ChallengesPage() {
             <p className="page-subtitle">Complete challenges and objectives to earn exclusive rewards.</p>
           </motion.div>
 
-          <div className="raffle-grid">
+          <div className="raffle-grid cards-grid-spacious">
             {loading ? (
               <div className="text-center py-20 w-full opacity-50">LOADING CHALLENGES...</div>
             ) : challenges.length > 0 ? (

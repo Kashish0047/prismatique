@@ -86,17 +86,24 @@ body {
 
 .nav-menu {
   display: flex;
-  gap: 35px;
+  gap: 20px;
   list-style: none;
+  align-items: center;
 }
 
 .nav-link {
   text-decoration: none;
   color: var(--text-secondary);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   transition: all 0.3s ease;
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+@media (min-width: 993px) and (max-width: 1150px) {
+  .nav-menu { gap: 14px; }
+  .nav-link { font-size: 0.76rem; letter-spacing: 0.5px; }
 }
 
 .nav-link:hover {
@@ -987,20 +994,53 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
 }
 
 .raffle-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 24px;
-  padding: 40px;
+  background: linear-gradient(135deg, #11141b 0%, #181d27 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+  padding: 48px 44px;
   text-align: center;
   transition: all 0.3s ease;
   position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  min-height: 340px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+.raffle-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(83, 252, 24, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.raffle-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.raffle-card p {
+  color: var(--text-secondary);
+  font-size: 0.98rem;
+  line-height: 1.7;
+  max-width: 420px;
+  margin: 0 auto;
 }
 
 .raffle-card:hover {
   transform: translateY(-10px);
   border-color: #53fc18;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(83, 252, 24, 0.1);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45), 0 0 40px rgba(83, 252, 24, 0.12);
 }
+
+.raffle-card .raffle-btn { margin-top: auto; }
 
 .raffle-icon {
   font-size: 3rem;
@@ -2908,4 +2948,17 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
 @media (max-width: 600px) {
   .wr-row { grid-template-columns: 40px 1fr; }
   .wr-row .row-wager { grid-column: 1 / -1; text-align: left; }
+}
+
+/* ===== Spacious card grid for Raffles & Challenges ===== */
+.cards-grid-spacious {
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 40px;
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 640px) {
+  .cards-grid-spacious { grid-template-columns: 1fr; gap: 24px; }
+  .raffle-card { padding: 36px 26px; min-height: 0; }
 }

@@ -67,7 +67,7 @@ export default function RankingsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <h1 className="section-title">GLOBAL <span className="highlight-blue">RANKINGS</span></h1>
+            <h1 className="section-title">GLOBAL <span className="highlight-blue">LEADERBOARD</span></h1>
             <p className="page-subtitle">The top players in the Prismatique ecosystem.</p>
           </motion.div>
 

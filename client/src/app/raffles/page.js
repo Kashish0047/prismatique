@@ -111,7 +111,7 @@ export default function RafflesPage() {
             <p className="page-subtitle">Participate in exclusive daily events and win massive crypto prizes.</p>
           </motion.div>
 
-          <div className="raffle-grid">
+          <div className="raffle-grid cards-grid-spacious">
             {loading ? (
               <div className="text-center py-20 w-full opacity-50">LOADING RAFFLES...</div>
             ) : raffles.length > 0 ? (
