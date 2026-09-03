@@ -2937,6 +2937,7 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
   text-transform: uppercase;
 }
 .wr-row { grid-template-columns: 60px 1fr 160px; }
+.wr-row.has-reward { grid-template-columns: 60px 1fr 150px 150px; }
 .wr-row-img, .wr-podium-img {
   width: 34px;
   height: 34px;
@@ -2945,9 +2946,39 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
   border: 1px solid rgba(255,255,255,0.15);
 }
 .wr-podium-img { width: 46px; height: 46px; border-color: var(--accent); }
+
+.lb-row-head {
+  display: grid;
+  grid-template-columns: 60px 1fr 160px;
+  padding: 0 30px 10px;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.35);
+}
+.lb-row-head.has-reward { grid-template-columns: 60px 1fr 150px 150px; }
+.lb-col-right { text-align: right; }
+
+.row-reward { text-align: right; font-size: 1.15rem; font-weight: 900; color: var(--gold); }
+.row-reward .small-label { text-align: right; }
+
+.podium-reward {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
 @media (max-width: 600px) {
-  .wr-row { grid-template-columns: 40px 1fr; }
-  .wr-row .row-wager { grid-column: 1 / -1; text-align: left; }
+  .wr-row, .wr-row.has-reward { grid-template-columns: 40px 1fr; }
+  .wr-row .row-wager, .wr-row .row-reward { grid-column: 1 / -1; text-align: left; }
+  .wr-row .row-reward .small-label { text-align: left; }
+  .lb-row-head { display: none; }
 }
 
 /* ===== Spacious card grid for Raffles & Challenges ===== */

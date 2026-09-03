@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 const DISCORD_URL = 'https://discord.gg/DVMcvPhVHA';
 
-function PodiumSlot({ entry, place, medal, metric }) {
+function PodiumSlot({ entry, place, medal, metric, reward }) {
   const rankNum = place === 'first' ? 1 : place === 'second' ? 2 : 3;
   return (
     <div className={`podium-item ${place}`}>
@@ -18,6 +18,7 @@ function PodiumSlot({ entry, place, medal, metric }) {
       <div className="podium-value" style={place === 'first' ? { fontSize: '2rem' } : {}}>
         {(entry?.points || 0).toLocaleString()}
       </div>
+      {reward && <div className="podium-reward">🏆 {reward}</div>}
     </div>
   );
 }
@@ -77,7 +78,10 @@ export default function Leaderboard({ preview = false }) {
     return () => clearInterval(t);
   }, [activeId, fetchStandings]);
 
-  const metric = board?.metricLabel || 'POINTS';
+  const metric = board?.metricLabel || 'WAGER';
+  const prizes = board?.prizes || [];
+  const rewardFor = (rank) => prizes[rank - 1] || '';
+  const hasRewards = prizes.length > 0;
   const top3 = standings.slice(0, 3);
   const rest = preview ? standings.slice(3, 5) : standings.slice(3);
   const updatedTime = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
@@ -149,36 +153,50 @@ export default function Leaderboard({ preview = false }) {
         ) : (
           <>
             <div className="podium-container">
-              <PodiumSlot entry={top3[1]} place="second" medal="🥈" metric={metric} />
-              <PodiumSlot entry={top3[0]} place="first" medal="🏆" metric={metric} />
-              <PodiumSlot entry={top3[2]} place="third" medal="🥉" metric={metric} />
+              <PodiumSlot entry={top3[1]} place="second" medal="🥈" metric={metric} reward={rewardFor(2)} />
+              <PodiumSlot entry={top3[0]} place="first" medal="🏆" metric={metric} reward={rewardFor(1)} />
+              <PodiumSlot entry={top3[2]} place="third" medal="🥉" metric={metric} reward={rewardFor(3)} />
             </div>
 
             <div className="leaderboard-list">
+              <div className={`lb-row-head ${hasRewards ? 'has-reward' : ''}`}>
+                <span>#</span>
+                <span>PLAYER</span>
+                <span className="lb-col-right">{metric}</span>
+                {hasRewards && <span className="lb-col-right">REWARD</span>}
+              </div>
               <AnimatePresence>
-                {rest.map((p, index) => (
-                  <motion.div
-                    key={p.username + index}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="leaderboard-row wr-row"
-                  >
-                    <div className="row-rank">{index + 4}</div>
-                    <div className="row-user">
-                      <div className="row-avatar">
-                        {p.avatar ? <img src={p.avatar} alt={p.username} className="wr-row-img" /> : '👤'}
-                      </div>
-                      <div className="row-name-group">
+                {rest.map((p, index) => {
+                  const rank = index + 4;
+                  const reward = rewardFor(rank);
+                  return (
+                    <motion.div
+                      key={p.username + index}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className={`leaderboard-row wr-row ${hasRewards ? 'has-reward' : ''}`}
+                    >
+                      <div className="row-rank">{rank}</div>
+                      <div className="row-user">
+                        <div className="row-avatar">
+                          {p.avatar ? <img src={p.avatar} alt={p.username} className="wr-row-img" /> : '👤'}
+                        </div>
                         <div className="row-name">{p.username}</div>
                       </div>
-                    </div>
-                    <div className="row-wager">
-                      <span className="small-label">{metric}</span>
-                      <div>{(p.points || 0).toLocaleString()}</div>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="row-wager">
+                        <span className="small-label">{metric}</span>
+                        <div>{(p.points || 0).toLocaleString()}</div>
+                      </div>
+                      {hasRewards && (
+                        <div className="row-reward">
+                          <span className="small-label">REWARD</span>
+                          <div>{reward || '—'}</div>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
             </div>
           </>

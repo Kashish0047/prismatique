@@ -46,7 +46,7 @@ export default function AdminDashboard({ onLogout }) {
   });
 
   const [newLeaderboard, setNewLeaderboard] = useState({
-    name: '', platform: '', apiKey: '', limit: 20, prizeText: '', metricLabel: 'POINTS', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
+    name: '', platform: '', apiKey: '', limit: 20, prizesText: '', metricLabel: 'WAGER', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
   });
 
   const [newShopItem, setNewShopItem] = useState({
@@ -133,11 +133,13 @@ export default function AdminDashboard({ onLogout }) {
   const handleCreateLeaderboard = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/admin/leaderboards`, newLeaderboard, { headers: { token } });
+      const { prizesText, ...rest } = newLeaderboard;
+      const payload = { ...rest, prizes: (prizesText || '').split('\n').map(s => s.trim()).filter(Boolean) };
+      await axios.post(`${API}/admin/leaderboards`, payload, { headers: { token } });
       setIsAdding(false);
       fetchAllData();
       toast.success('Leaderboard created successfully!');
-      setNewLeaderboard({ name: '', platform: '', apiKey: '', limit: 20, prizeText: '', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true });
+      setNewLeaderboard({ name: '', platform: '', apiKey: '', limit: 20, prizesText: '', metricLabel: 'WAGER', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true });
     } catch (err) {
       toast.error('Error creating leaderboard');
     }
@@ -504,9 +506,9 @@ export default function AdminDashboard({ onLogout }) {
                 <input placeholder="Name (e.g. Qzino Monthly Wager)" required value={newLeaderboard.name} onChange={(e) => setNewLeaderboard({...newLeaderboard, name: e.target.value})} />
                 <input placeholder="Platform label / tab name (e.g. Qzino)" value={newLeaderboard.platform} onChange={(e) => setNewLeaderboard({...newLeaderboard, platform: e.target.value})} />
                 <input placeholder="StreamNeeds API key (bh_sk_...)" required value={newLeaderboard.apiKey} onChange={(e) => setNewLeaderboard({...newLeaderboard, apiKey: e.target.value})} />
-                <textarea placeholder="Prize breakdown text (e.g. 1st $250 · 2nd $100 · 3rd $50)" value={newLeaderboard.prizeText} onChange={(e) => setNewLeaderboard({...newLeaderboard, prizeText: e.target.value})} />
+                <textarea placeholder="Rewards — one per line, top rank first (e.g.&#10;$250&#10;$100&#10;$50)" value={newLeaderboard.prizesText} onChange={(e) => setNewLeaderboard({...newLeaderboard, prizesText: e.target.value})} />
                 <div className="form-row">
-                  <input placeholder="Metric label (e.g. WAGERED)" value={newLeaderboard.metricLabel} onChange={(e) => setNewLeaderboard({...newLeaderboard, metricLabel: e.target.value})} />
+                  <input placeholder="Wager column label (e.g. WAGER)" value={newLeaderboard.metricLabel} onChange={(e) => setNewLeaderboard({...newLeaderboard, metricLabel: e.target.value})} />
                   <input type="color" title="Tab accent colour" value={newLeaderboard.accentColor} onChange={(e) => setNewLeaderboard({...newLeaderboard, accentColor: e.target.value})} style={{ height: '50px', padding: '4px' }} />
                 </div>
                 <div className="form-row">
