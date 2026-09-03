@@ -10,6 +10,7 @@ export const metadata = {
 };
 
 import AdminPortal from "@/components/AdminPortal";
+import PageTransition from "@/components/PageTransition";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body>
+        <PageTransition />
         {children}
         <AdminPortal />
         <ToastContainer 
