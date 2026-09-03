@@ -2962,3 +2962,97 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
   .cards-grid-spacious { grid-template-columns: 1fr; gap: 24px; }
   .raffle-card { padding: 36px 26px; min-height: 0; }
 }
+
+/* ===== THE LEADERBOARD — race selector ===== */
+.lb-updated {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 4px 0 34px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.lb-discord-btn {
+  background: #5865f2;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.5px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lb-discord-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(88,101,242,0.35); }
+
+.lb-select-label {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.lb-race-switch {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.lb-race-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.lb-race-btn:hover { background: rgba(255, 255, 255, 0.03); }
+.lb-race-btn.active {
+  background: color-mix(in srgb, var(--race-accent, #00f2ff) 14%, transparent);
+  border-color: color-mix(in srgb, var(--race-accent, #00f2ff) 45%, transparent);
+}
+.lb-race-name {
+  font-size: 1.05rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+.lb-race-btn.active .lb-race-name { color: #fff; }
+.lb-race-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.3);
+}
+.lb-race-btn.active .lb-race-sub { color: #53fc18; }
+.lb-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #53fc18;
+  box-shadow: 0 0 8px #53fc18;
+  animation: pulse 2s infinite;
+}
+.lb-showing {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 18px 0 8px;
+}
+.lb-showing strong { color: var(--text-primary); }
+.lb-prize { margin: 22px auto 8px; max-width: 900px; }

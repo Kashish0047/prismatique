@@ -67,8 +67,8 @@ export default function RankingsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <h1 className="section-title">GLOBAL <span className="highlight-blue">LEADERBOARD</span></h1>
-            <p className="page-subtitle">The top players in the Prismatique ecosystem.</p>
+            <h1 className="section-title">THE <span className="highlight-blue">LEADERBOARD</span></h1>
+            <p className="page-subtitle">Live wager races across our partner casinos. Pick a race to see its standings.</p>
           </motion.div>
 
           <Leaderboard />

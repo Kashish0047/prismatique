@@ -164,6 +164,7 @@ function publicBoard(b) {
     name: b.name,
     platform: b.platform,
     prizeText: b.prizeText,
+    metricLabel: b.metricLabel || 'POINTS',
     accentColor: b.accentColor,
     order: b.order,
     periodStartedAt: b.periodStartedAt,
@@ -171,14 +172,26 @@ function publicBoard(b) {
   };
 }
 
+// Legacy endpoint — kept for backwards compat. Now proxies the first active
+// StreamNeeds board so nothing shows the old demo players.
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const players = await Player.find().sort({ rank: 1 });
-    res.json({
-      success: true,
-      data: players,
-      endsAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-    });
+    const board = await Leaderboard.findOne({ active: true }).sort({ order: 1, createdAt: 1 });
+    if (!board) return res.json({ success: true, data: [], endsAt: null });
+
+    let standings = [];
+    try {
+      const live = await fetchStreamneeds(board.apiKey, board.limit);
+      standings = computeStandings(board, live);
+    } catch (e) {
+      return res.json({ success: true, data: [], endsAt: null });
+    }
+
+    const data = standings.map((s, i) => ({
+      rank: s.rank, username: s.username, wageredUsd: s.points,
+      xp: 0, level: 1, badges: [], avatar: s.avatar
+    }));
+    res.json({ success: true, data, endsAt: null });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching leaderboard" });
   }
@@ -485,7 +498,7 @@ app.get('/api/leaderboards/:id/standings', async (req, res) => {
       return res.json({ success: false, message: "Leaderboard data is temporarily unavailable", board: publicBoard(board), standings: [] });
     }
 
-    res.json({ success: true, board: publicBoard(board), standings });
+    res.json({ success: true, board: publicBoard(board), standings, count: standings.length, updatedAt: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching standings" });
   }
@@ -1706,24 +1719,25 @@ server.on('error', (err) => {
   }
 });
 
+const DEMO_PLAYER_NAMES = ["PlayerOne", "HighRoller", "LuckyStar", "CryptoKing", "BetMaster", "Jackpot777", "SpinWin", "LuckyCharm", "BetPro", "NewPlayer"];
+
 async function seedDatabase() {
   try {
-    const playerCount = await Player.countDocuments();
-    if (playerCount === 0) {
-      console.log('🌱 Seeding initial leaderboard data...');
-      const initialPlayers = [
-        { rank: 1, username: "PlayerOne", wageredUsd: 15000, xp: 2450, level: 24, badges: ["👑", "🔥"] },
-        { rank: 2, username: "HighRoller", wageredUsd: 12500, xp: 2100, level: 21, badges: ["🎯"] },
-        { rank: 3, username: "LuckyStar", wageredUsd: 10000, xp: 1800, level: 18, badges: ["🎰"] },
-        { rank: 4, username: "CryptoKing", wageredUsd: 8500, xp: 1500, level: 15, badges: [] },
-        { rank: 5, username: "BetMaster", wageredUsd: 7000, xp: 1200, level: 12, badges: [] },
-        { rank: 6, username: "Jackpot777", wageredUsd: 5500, xp: 900, level: 9, badges: [] },
-        { rank: 7, username: "SpinWin", wageredUsd: 4000, xp: 750, level: 7, badges: [] },
-        { rank: 8, username: "LuckyCharm", wageredUsd: 3000, xp: 600, level: 6, badges: [] },
-        { rank: 9, username: "BetPro", wageredUsd: 2000, xp: 450, level: 4, badges: [] },
-        { rank: 10, username: "NewPlayer", wageredUsd: 1000, xp: 200, level: 2, badges: [] }
-      ];
-      await Player.insertMany(initialPlayers);
+    // The public leaderboard is now StreamNeeds-backed (see /api/leaderboards).
+    // Purge the old hard-coded demo players so they never show on the live board.
+    const purged = await Player.deleteMany({ username: { $in: DEMO_PLAYER_NAMES } });
+    if (purged.deletedCount) console.log(`🧹 Removed ${purged.deletedCount} demo leaderboard players`);
+
+    if (process.env.SEED_FAKE_PLAYERS === 'true') {
+      const playerCount = await Player.countDocuments();
+      if (playerCount === 0) {
+        console.log('🌱 Seeding demo leaderboard data (SEED_FAKE_PLAYERS=true)...');
+        await Player.insertMany([
+          { rank: 1, username: "PlayerOne", wageredUsd: 15000, xp: 2450, level: 24, badges: ["👑", "🔥"] },
+          { rank: 2, username: "HighRoller", wageredUsd: 12500, xp: 2100, level: 21, badges: ["🎯"] },
+          { rank: 3, username: "LuckyStar", wageredUsd: 10000, xp: 1800, level: 18, badges: ["🎰"] }
+        ]);
+      }
     }
 
     const activityCount = await Activity.countDocuments();

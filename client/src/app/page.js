@@ -515,7 +515,7 @@ export default function Home() {
             <h2 className="section-title">GLOBAL <span className="highlight-blue">LEADERBOARD</span></h2>
             <p className="section-subtitle">Top players competing for glory.</p>
           </div>
-          <Leaderboard />
+          <Leaderboard preview />
           <div className="view-all-container mt-10">
             <Link href="/rankings" className="view-all-games-btn">
               <span>VIEW FULL LEADERBOARD</span>

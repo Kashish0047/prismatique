@@ -1,200 +1,188 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Podium from './Podium';
 
-export default function Leaderboard() {
-  const [players, setPlayers] = useState([]);
-  const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00', seconds: '00' });
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const DISCORD_URL = 'https://discord.gg/DVMcvPhVHA';
+
+function PodiumSlot({ entry, place, medal, metric }) {
+  const rankNum = place === 'first' ? 1 : place === 'second' ? 2 : 3;
+  return (
+    <div className={`podium-item ${place}`}>
+      <div className="podium-rank-badge">RANK {rankNum}</div>
+      <div className="podium-avatar" style={place === 'first' ? { fontSize: '50px' } : {}}>
+        {entry?.avatar ? <img src={entry.avatar} alt={entry.username} className="wr-podium-img" /> : medal}
+      </div>
+      <div className="podium-name" style={place === 'first' ? { fontSize: '1.4rem' } : {}}>{entry?.username || '---'}</div>
+      <div className="small-label">{metric}</div>
+      <div className="podium-value" style={place === 'first' ? { fontSize: '2rem' } : {}}>
+        {(entry?.points || 0).toLocaleString()}
+      </div>
+    </div>
+  );
+}
+
+export default function Leaderboard({ preview = false }) {
+  const [boards, setBoards] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [board, setBoard] = useState(null);
+  const [standings, setStandings] = useState([]);
+  const [count, setCount] = useState(0);
+  const [updatedAt, setUpdatedAt] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('monthly');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 30000);
-    return () => clearInterval(interval);
+    (async () => {
+      try {
+        const res = await fetch(`${API}/leaderboards`);
+        const data = await res.json();
+        if (data.success && data.data.length) {
+          setBoards(data.data);
+          setActiveId(data.data[0]._id);
+        } else {
+          setLoading(false);
+        }
+      } catch (e) {
+        setLoading(false);
+      }
+    })();
   }, []);
 
-  const fetchLeaderboard = async () => {
+  const fetchStandings = useCallback(async (id) => {
+    if (!id) return;
+    setLoading(true);
+    setMessage('');
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-      const res = await fetch(`${apiUrl}/leaderboard`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const result = await res.json();
-      if (result.success) {
-        setPlayers(result.data);
-        startCountdown(result.endsAt);
-      }
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to fetch leaderboard:', error);
+      const res = await fetch(`${API}/leaderboards/${id}/standings`);
+      const data = await res.json();
+      setBoard(data.board || null);
+      setStandings(data.standings || []);
+      setCount(data.count || (data.standings ? data.standings.length : 0));
+      setUpdatedAt(data.updatedAt || new Date().toISOString());
+      if (!data.success) setMessage(data.message || 'Leaderboard data is temporarily unavailable.');
+    } catch (e) {
+      setMessage('Could not load leaderboard.');
+      setStandings([]);
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const startCountdown = (endTime) => {
-    const targetTime = new Date(endTime).getTime();
-    const updateTimer = () => {
-      const now = new Date().getTime();
-      const distance = targetTime - now;
-      if (distance < 0) return;
-      setTimeLeft({
-        days: String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0'),
-        hours: String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0'),
-        minutes: String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0'),
-        seconds: String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0')
-      });
-    };
-    updateTimer();
-    const timerInterval = setInterval(updateTimer, 1000);
-    return () => clearInterval(timerInterval);
-  };
+  useEffect(() => { if (activeId) fetchStandings(activeId); }, [activeId, fetchStandings]);
 
-  const top3 = players.slice(0, 3);
-  const remaining = players.slice(3);
+  useEffect(() => {
+    if (!activeId) return;
+    const t = setInterval(() => fetchStandings(activeId), 60000);
+    return () => clearInterval(t);
+  }, [activeId, fetchStandings]);
+
+  const metric = board?.metricLabel || 'POINTS';
+  const top3 = standings.slice(0, 3);
+  const rest = preview ? standings.slice(3, 5) : standings.slice(3);
+  const updatedTime = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
+
+  if (!loading && boards.length === 0) {
+    return (
+      <div className="rewards-content-wrapper">
+        <div className="wager-rewards-coming">
+          <div className="coming-soon-card-premium">
+            <div className="glass-effect"></div>
+            <div className="coming-soon-icon">🏆</div>
+            <h3>LEADERBOARD</h3>
+            <p>No active race right now. Check back soon for live standings and prize pools.</p>
+            <div className="coming-soon-badge-premium">
+              <span className="pulse-dot"></span>
+              LAUNCHING SOON
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <section id="leaderboard" className="leaderboard-section">
       <div className="container">
-        <header className="leaderboard-header">
-          <div className="leaderboard-filters">
-            <button className={`filter-btn ${filter === 'weekly' ? 'active' : ''}`} onClick={() => setFilter('weekly')}>WEEKLY</button>
-            <button className={`filter-btn ${filter === 'monthly' ? 'active' : ''}`} onClick={() => setFilter('monthly')}>MONTHLY</button>
-            <button className={`filter-btn ${filter === 'alltime' ? 'active' : ''}`} onClick={() => setFilter('alltime')}>ALL TIME</button>
+        {!preview && (
+          <div className="lb-updated">
+            {updatedTime && <span>Updated: {updatedTime}</span>}
+            <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="lb-discord-btn">Join Discord</a>
           </div>
-        </header>
+        )}
 
-        <Podium top3={top3} />
+        {boards.length > 0 && (
+          <>
+            <div className="lb-select-label">✦ SELECT RACE ✦</div>
+            <div className="lb-race-switch">
+              {boards.map((b) => {
+                const on = activeId === b._id;
+                return (
+                  <button
+                    key={b._id}
+                    className={`lb-race-btn ${on ? 'active' : ''}`}
+                    onClick={() => setActiveId(b._id)}
+                    style={on ? { '--race-accent': b.accentColor || '#00f2ff' } : {}}
+                  >
+                    <span className="lb-race-name">{b.platform || b.name}</span>
+                    <span className="lb-race-sub">{on ? <><span className="lb-live-dot"></span> LIVE</> : 'SWITCH'}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {board && (
+              <div className="lb-showing">
+                Showing: <strong>{board.platform || board.name}</strong> · {count} player{count === 1 ? '' : 's'}
+              </div>
+            )}
+          </>
+        )}
 
-        <div className="countdown-banner">
-          <span className="countdown-label">🏆 LEADERBOARD ENDS IN</span>
-          <div className="countdown-segments">
-            <div className="countdown-seg">
-              <div className="seg-value">{timeLeft.days}</div>
-              <div className="seg-unit">DAYS</div>
-            </div>
-            <div className="countdown-sep">:</div>
-            <div className="countdown-seg">
-              <div className="seg-value">{timeLeft.hours}</div>
-              <div className="seg-unit">HRS</div>
-            </div>
-            <div className="countdown-sep">:</div>
-            <div className="countdown-seg">
-              <div className="seg-value">{timeLeft.minutes}</div>
-              <div className="seg-unit">MIN</div>
-            </div>
-            <div className="countdown-sep">:</div>
-            <div className="countdown-seg seg-seconds">
-              <div className="seg-value">{timeLeft.seconds}</div>
-              <div className="seg-unit">SEC</div>
-            </div>
-          </div>
-        </div>
+        {board?.prizeText && !preview && <div className="wr-prize lb-prize">{board.prizeText}</div>}
 
-        <style jsx>{`
-          .countdown-banner {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 32px;
-            margin: 32px 0;
-            padding: 24px 40px;
-            background: linear-gradient(135deg, rgba(83,252,24,0.05) 0%, rgba(0,242,255,0.05) 100%);
-            border: 1px solid rgba(83,252,24,0.15);
-            border-radius: 20px;
-            flex-wrap: wrap;
-          }
-          .countdown-label {
-            font-size: 0.7rem;
-            font-weight: 900;
-            letter-spacing: 3px;
-            color: rgba(255,255,255,0.5);
-          }
-          .countdown-segments {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-          }
-          .countdown-seg {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px;
-            padding: 16px 20px;
-            min-width: 72px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-          }
-          .seg-seconds {
-            border-color: rgba(83,252,24,0.3);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px rgba(83,252,24,0.1), inset 0 1px 0 rgba(83,252,24,0.1);
-          }
-          .seg-value {
-            font-size: 2.2rem;
-            font-weight: 950;
-            color: #fff;
-            line-height: 1;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -1px;
-          }
-          .seg-seconds .seg-value {
-            color: #53fc18;
-            text-shadow: 0 0 20px rgba(83,252,24,0.5);
-          }
-          .seg-unit {
-            font-size: 0.55rem;
-            font-weight: 900;
-            letter-spacing: 2px;
-            color: rgba(255,255,255,0.3);
-            margin-top: 6px;
-          }
-          .countdown-sep {
-            font-size: 2rem;
-            font-weight: 900;
-            color: rgba(255,255,255,0.2);
-            margin-bottom: 18px;
-          }
-          @media (max-width: 600px) {
-            .countdown-banner { gap: 16px; padding: 18px 16px; }
-            .countdown-seg { min-width: 56px; padding: 12px 14px; }
-            .seg-value { font-size: 1.6rem; }
-          }
-        `}</style>
+        {loading ? (
+          <div className="text-center py-20 w-full opacity-50">LOADING STANDINGS...</div>
+        ) : message ? (
+          <div className="text-center py-20 w-full opacity-60">{message}</div>
+        ) : standings.length === 0 ? (
+          <div className="text-center py-20 w-full opacity-50">NO STANDINGS YET FOR THIS RACE.</div>
+        ) : (
+          <>
+            <div className="podium-container">
+              <PodiumSlot entry={top3[1]} place="second" medal="🥈" metric={metric} />
+              <PodiumSlot entry={top3[0]} place="first" medal="🏆" metric={metric} />
+              <PodiumSlot entry={top3[2]} place="third" medal="🥉" metric={metric} />
+            </div>
 
-        <div className="leaderboard-list">
-          <AnimatePresence>
-            {remaining.map((player, index) => (
-              <motion.div 
-                key={player._id || player.username}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className="leaderboard-row"
-              >
-                <div className="row-rank">{index + 4}</div>
-                <div className="row-user">
-                  <div className="row-avatar">👤</div>
-                  <div className="row-name-group">
-                    <div className="row-name">{player.username}</div>
-                    <div className="row-badges">{player.badges?.map((b, i) => <span key={i}>{b}</span>)}</div>
-                  </div>
-                </div>
-                <div className="row-xp">
-                  <span className="small-label">LEVEL {player.level}</span>
-                  <div className="xp-bar-container">
-                    <div className="xp-bar-fill" style={{ width: `${(player.xp % 100)}%` }}></div>
-                  </div>
-                </div>
-                <div className="row-wager">
-                  <span className="small-label">WAGERED</span>
-                  <div>${player.wageredUsd.toLocaleString()}</div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+            <div className="leaderboard-list">
+              <AnimatePresence>
+                {rest.map((p, index) => (
+                  <motion.div
+                    key={p.username + index}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03 }}
+                    className="leaderboard-row wr-row"
+                  >
+                    <div className="row-rank">{index + 4}</div>
+                    <div className="row-user">
+                      <div className="row-avatar">
+                        {p.avatar ? <img src={p.avatar} alt={p.username} className="wr-row-img" /> : '👤'}
+                      </div>
+                      <div className="row-name-group">
+                        <div className="row-name">{p.username}</div>
+                      </div>
+                    </div>
+                    <div className="row-wager">
+                      <span className="small-label">{metric}</span>
+                      <div>{(p.points || 0).toLocaleString()}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );

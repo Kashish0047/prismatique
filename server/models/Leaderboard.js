@@ -7,6 +7,7 @@ const LeaderboardSchema = new mongoose.Schema({
   apiKey: { type: String, required: true },         // StreamNeeds bh_sk_... key for this board
   limit: { type: Number, default: 20 },
   prizeText: { type: String, default: '' },         // free-text prize breakdown
+  metricLabel: { type: String, default: 'POINTS' }, // column label, e.g. "WAGERED"
   accentColor: { type: String, default: '#00f2ff' },
   active: { type: Boolean, default: true },
   order: { type: Number, default: 0 },
