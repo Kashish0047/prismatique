@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import Navbar from '@/components/Navbar';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -10,6 +11,17 @@ export default function ShopPage() {
   const [coins, setCoins] = useState(0);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(null);
+
+  const fetchShop = async () => {
+    try {
+      const res = await fetch(`${API}/sn/shop`);
+      const data = await res.json();
+      if (data.success) setItems(data.data);
+    } catch (e) {} finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('prism_auth_v2');
@@ -37,15 +49,7 @@ export default function ShopPage() {
       window.location.href = window.location.pathname;
     }
 
-    (async () => {
-      try {
-        const res = await fetch(`${API}/shop`);
-        const data = await res.json();
-        if (data.success) setItems(data.data);
-      } catch (e) {} finally {
-        setLoading(false);
-      }
-    })();
+    fetchShop();
   }, []);
 
   const handleLogout = () => {
@@ -61,6 +65,25 @@ export default function ShopPage() {
     window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
   };
 
+  const buy = async (item) => {
+    if (!user) { toast.error('Log in first!', { position: 'top-center' }); return; }
+    setBusy(item.id);
+    try {
+      const res = await fetch(`${API}/sn/shop/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, itemId: item.id, quantity: 1 })
+      });
+      const data = await res.json();
+      if (data.success) { toast.success(`Redeemed ${item.title}!`); fetchShop(); }
+      else toast.warning(data.message || 'Could not redeem');
+    } catch (e) {
+      toast.error('Purchase failed. Try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <main className="min-h-screen bg-dark">
       <Navbar user={user} onLogout={handleLogout} onLoginClick={startLogin} coins={coins} />
@@ -69,7 +92,7 @@ export default function ShopPage() {
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
             <h1 className="section-title">PRISMATIQUE <span className="highlight-blue">SHOP</span></h1>
-            <p className="page-subtitle">Redeem your coins for exclusive rewards.</p>
+            <p className="page-subtitle">Spend your points on rewards. Items are managed in StreamNeeds.</p>
           </motion.div>
 
           {loading ? (
@@ -81,10 +104,10 @@ export default function ShopPage() {
                   <div className="glass-effect"></div>
                   <div className="coming-soon-icon">🛍️</div>
                   <h3>SHOP COMING SOON</h3>
-                  <p>The Prismatique rewards store is being stocked. Check back soon.</p>
+                  <p>No store items yet. Add them in your StreamNeeds point-shop and they&apos;ll appear here.</p>
                   <div className="coming-soon-badge-premium">
                     <span className="pulse-dot"></span>
-                    DEVELOPMENT IN PROGRESS
+                    NO ITEMS YET
                   </div>
                 </div>
               </div>
@@ -92,10 +115,10 @@ export default function ShopPage() {
           ) : (
             <div className="raffle-grid cards-grid-spacious">
               {items.map((item, i) => {
-                const soldOut = item.status === 'soldout' || item.quantity === 0;
+                const out = item.inStock === false || item.stock === 0;
                 return (
                   <motion.div
-                    key={item._id}
+                    key={item.id}
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
@@ -105,16 +128,22 @@ export default function ShopPage() {
                       {item.image
                         ? <img src={item.image} alt={item.title} className="shop-img" />
                         : <div className="shop-img-placeholder">🛍️</div>}
-                      {soldOut && <div className="shop-soldout-tag">SOLD OUT</div>}
+                      {out && <div className="shop-soldout-tag">SOLD OUT</div>}
+                      {item.onSale && !out && <div className="shop-sale-tag">SALE</div>}
                     </div>
                     <h3>{item.title}</h3>
                     {item.description && <p>{item.description}</p>}
                     <div className="shop-meta">
-                      <span className="shop-price">🪙 {(item.price || 0).toLocaleString()}</span>
-                      {item.quantity >= 0 && <span className="shop-stock">{item.quantity} left</span>}
+                      <span className="shop-price">
+                        🪙 {(item.price || 0).toLocaleString()}
+                        {item.onSale && item.listPrice > item.price && (
+                          <span className="shop-price-was">{item.listPrice.toLocaleString()}</span>
+                        )}
+                      </span>
+                      {item.stock != null && item.stock >= 0 && <span className="shop-stock">{item.stock} left</span>}
                     </div>
-                    <button className="raffle-btn" disabled={soldOut}>
-                      {soldOut ? 'SOLD OUT' : 'REDEEM SOON'}
+                    <button className="raffle-btn" disabled={out || busy === item.id} onClick={() => buy(item)}>
+                      {out ? 'SOLD OUT' : busy === item.id ? 'REDEEMING…' : 'REDEEM'}
                     </button>
                   </motion.div>
                 );

@@ -20,6 +20,7 @@ const Challenge = require('./models/Challenge');
 const Leaderboard = require('./models/Leaderboard');
 const LeaderboardHistory = require('./models/LeaderboardHistory');
 const ShopItem = require('./models/ShopItem');
+const Settings = require('./models/Settings');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -104,12 +105,51 @@ const streamInfoCache = new Map();
 const activeFetches = new Set();
 const CACHE_DURATION = 15 * 60 * 1000;
 
-// --- StreamNeeds leaderboard integration ---
+// --- StreamNeeds integration ---
 // Use the www host directly — the apex domain 307-redirects and the
 // Authorization header is dropped on the cross-host hop (→ 401).
 const STREAMNEEDS_BASE = 'https://www.streamneeds.com';
 const leaderboardCache = new Map(); // key: `${apiKey}|${limit}` -> { timestamp, data }
 const LEADERBOARD_CACHE_MS = 60 * 1000;
+
+// Resolved SN credentials: Settings doc first, env var fallback. Cached 30s.
+let _snCfg = { at: 0, key: '', userId: '' };
+async function getSN() {
+  if (Date.now() - _snCfg.at < 30000 && (_snCfg.key || _snCfg.userId)) return _snCfg;
+  let doc = null;
+  try { doc = await Settings.findOne({ key: 'site' }); } catch (e) {}
+  _snCfg = {
+    at: Date.now(),
+    key: (doc && doc.streamneedsApiKey) || process.env.STREAMNEEDS_API_KEY || '',
+    userId: (doc && doc.streamneedsUserId) || process.env.STREAMNEEDS_USER_ID || ''
+  };
+  return _snCfg;
+}
+
+// Generic SN request. Returns { ok, status, data }. Never throws.
+async function snRequest(method, path, { params, body, apiKey } = {}) {
+  const cfg = await getSN();
+  const key = apiKey || cfg.key;
+  if (!key) return { ok: false, status: 0, data: { error: 'StreamNeeds API key not configured' } };
+  try {
+    const resp = await axios({
+      method,
+      url: `${STREAMNEEDS_BASE}${path}`,
+      params,
+      data: body,
+      headers: { Authorization: `Bearer ${key}` },
+      timeout: 20000
+    });
+    return { ok: true, status: resp.status, data: resp.data };
+  } catch (err) {
+    const status = err.response?.status || 0;
+    return { ok: false, status, data: err.response?.data || { error: err.message } };
+  }
+}
+
+// SN viewer identifier. For Kick, the bare username (case-insensitive) is what
+// the API expects — the "platform:id" form is only for Discord snowflakes.
+const snId = (username) => String(username || '').trim();
 
 async function fetchStreamneeds(apiKey, limit = 20) {
   const cacheKey = `${apiKey}|${limit}`;
@@ -691,6 +731,213 @@ app.delete('/api/admin/shop/:id', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, message: "Error deleting shop item" });
   }
+});
+
+// ============================================================
+//  STREAMNEEDS-BACKED FEATURES
+// ============================================================
+
+// --- Admin settings (SN credentials) ---
+app.get('/api/admin/settings', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const doc = await Settings.findOne({ key: 'site' });
+    res.json({
+      success: true,
+      data: {
+        streamneedsApiKey: doc?.streamneedsApiKey || '',
+        streamneedsUserId: doc?.streamneedsUserId || ''
+      },
+      env: {
+        apiKey: !!process.env.STREAMNEEDS_API_KEY,
+        userId: !!process.env.STREAMNEEDS_USER_ID
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching settings" });
+  }
+});
+
+app.put('/api/admin/settings', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const { streamneedsApiKey, streamneedsUserId } = req.body;
+    const doc = await Settings.findOneAndUpdate(
+      { key: 'site' },
+      { streamneedsApiKey: streamneedsApiKey || '', streamneedsUserId: streamneedsUserId || '', updatedAt: new Date() },
+      { new: true, upsert: true }
+    );
+    _snCfg = { at: 0, key: '', userId: '' }; // bust cache
+    res.json({ success: true, data: { streamneedsApiKey: doc.streamneedsApiKey, streamneedsUserId: doc.streamneedsUserId } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error saving settings" });
+  }
+});
+
+// Quick connectivity + scope probe for the admin panel
+app.get('/api/admin/sn/status', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  const cfg = await getSN();
+  const checks = {};
+  const probe = async (label, method, path, opts) => {
+    const r = await snRequest(method, path, opts);
+    checks[label] = r.ok ? 'ok' : (r.status === 403 ? 'no-scope' : r.status === 400 ? 'ok' : `error ${r.status}`);
+  };
+  await Promise.all([
+    probe('leaderboard', 'get', '/api/public/leaderboard', { params: { limit: 1 } }),
+    probe('raffles', 'get', '/api/public/raffles', { params: { status: 'all' } }),
+    probe('store', 'get', '/api/public/store/items', { params: { userId: cfg.userId } }),
+    probe('bannedGames', 'get', `/api/public/banned-games/${cfg.userId}`),
+    probe('hunts', 'get', '/api/v1/hunts', { params: { limit: 1 } }),
+    probe('games', 'get', '/api/v1/games', { params: { limit: 1 } }),
+    probe('slotRequests', 'get', '/api/v1/slot-requests', { params: { limit: 1 } })
+  ]);
+  res.json({ success: true, configured: { apiKey: !!cfg.key, userId: !!cfg.userId }, checks });
+});
+
+// --- Points / wallet (SN points) ---
+app.get('/api/sn/points/:username', async (req, res) => {
+  const r = await snRequest('get', `/api/public/users/${encodeURIComponent(snId(req.params.username))}/points`);
+  if (!r.ok) return res.json({ success: false, points: 0, status: r.status });
+  res.json({ success: true, points: Number(r.data?.points) || 0, viewerId: r.data?.viewerId || null });
+});
+
+app.get('/api/sn/profile/:username', async (req, res) => {
+  const r = await snRequest('get', `/api/public/users/${encodeURIComponent(snId(req.params.username))}/profile`);
+  if (!r.ok) return res.json({ success: false, status: r.status, message: r.data?.error });
+  res.json({ success: true, data: r.data });
+});
+
+app.get('/api/sn/transactions/:username', async (req, res) => {
+  const r = await snRequest('get', `/api/public/users/${encodeURIComponent(snId(req.params.username))}/transactions`, { params: { limit: 25 } });
+  if (!r.ok) return res.json({ success: false, status: r.status, data: [] });
+  res.json({ success: true, data: r.data?.transactions || r.data || [] });
+});
+
+// --- Raffles (SN) ---
+function normRaffle(r) {
+  return {
+    id: r.id,
+    slug: r.slug,
+    title: r.name,
+    ticketPrice: r.ticketPrice,
+    status: r.status,
+    drawDate: r.drawDate,
+    image: r.image || r.imageUrl || '',
+    description: r.description || '',
+    totalTickets: r.stats?.totalTickets ?? r.totalTickets ?? 0,
+    totalEntries: r.stats?.totalEntries ?? r.totalEntries ?? 0,
+    winner: r.winner || null
+  };
+}
+
+app.get('/api/sn/raffles', async (req, res) => {
+  const r = await snRequest('get', '/api/public/raffles', { params: { status: req.query.status || 'all' } });
+  if (!r.ok) return res.json({ success: false, status: r.status, data: [], message: r.data?.error });
+  const list = Array.isArray(r.data?.raffles) ? r.data.raffles.map(normRaffle) : [];
+  res.json({ success: true, data: list });
+});
+
+app.get('/api/sn/raffles/:id', async (req, res) => {
+  const r = await snRequest('get', `/api/public/raffles/${encodeURIComponent(req.params.id)}`, {
+    params: { identifier: req.query.username ? snId(req.query.username) : undefined }
+  });
+  if (!r.ok) return res.json({ success: false, status: r.status, message: r.data?.error });
+  const raffle = r.data?.raffle || r.data;
+  res.json({ success: true, data: { ...normRaffle(raffle), myTickets: raffle?.viewerTickets ?? raffle?.myTickets ?? 0 } });
+});
+
+app.post('/api/sn/raffles/buy', async (req, res) => {
+  const { username, prizeId, ticketCount } = req.body;
+  if (!username || !prizeId) return res.status(400).json({ success: false, message: 'username and prizeId required' });
+  const r = await snRequest('post', '/api/public/raffles/purchase', {
+    body: { identifier: snId(username), prizeId, ticketCount: Math.max(1, parseInt(ticketCount) || 1), purchasedFrom: 'prismatique' }
+  });
+  if (!r.ok) {
+    const msg = r.status === 403 ? 'Ticket purchasing is not enabled on the API key'
+      : r.data?.error || r.data?.message || 'Purchase failed';
+    return res.status(r.status === 403 ? 403 : 400).json({ success: false, message: msg });
+  }
+  res.json({ success: true, message: 'Tickets purchased!', data: r.data });
+});
+
+// --- Shop (SN store) ---
+function normItem(i) {
+  return {
+    id: i.id,
+    slug: i.slug,
+    title: i.name,
+    image: i.image || i.imageUrl || '',
+    description: i.description || '',
+    price: i.currentPrice ?? i.price ?? 0,
+    listPrice: i.price ?? 0,
+    onSale: !!i.onSale,
+    stock: i.stock ?? null,
+    inStock: i.inStock !== false,
+    maxPerUser: i.maxPerUser ?? null
+  };
+}
+
+app.get('/api/sn/shop', async (req, res) => {
+  const cfg = await getSN();
+  if (!cfg.userId) return res.json({ success: false, data: [], message: 'StreamNeeds User ID not set' });
+  const r = await snRequest('get', '/api/public/store/items', { params: { userId: cfg.userId } });
+  if (!r.ok) return res.json({ success: false, status: r.status, data: [], message: r.data?.error });
+  const list = Array.isArray(r.data?.items) ? r.data.items.map(normItem) : [];
+  res.json({ success: true, data: list });
+});
+
+app.post('/api/sn/shop/buy', async (req, res) => {
+  const { username, itemId, quantity } = req.body;
+  if (!username || !itemId) return res.status(400).json({ success: false, message: 'username and itemId required' });
+  const r = await snRequest('post', '/api/public/store/purchase', {
+    body: { identifier: snId(username), itemId, quantity: Math.max(1, parseInt(quantity) || 1) }
+  });
+  if (!r.ok) {
+    const msg = r.status === 403 ? 'Purchasing is not enabled on the API key'
+      : r.data?.error || r.data?.message || 'Purchase failed';
+    return res.status(r.status === 403 ? 403 : 400).json({ success: false, message: msg });
+  }
+  res.json({ success: true, message: 'Purchase complete!', data: r.data });
+});
+
+// --- Banned games ---
+app.get('/api/sn/banned-games', async (req, res) => {
+  const cfg = await getSN();
+  if (!cfg.userId) return res.json({ success: false, data: [], message: 'StreamNeeds User ID not set' });
+  const r = await snRequest('get', `/api/public/banned-games/${cfg.userId}`);
+  if (!r.ok) return res.json({ success: false, status: r.status, data: [] });
+  res.json({ success: true, data: r.data?.bannedGames || [], streamer: r.data?.user || null });
+});
+
+// --- Bonus hunts (needs hunts:read scope) ---
+app.get('/api/sn/hunts', async (req, res) => {
+  const r = await snRequest('get', '/api/v1/hunts', { params: { limit: 30, status: req.query.status } });
+  if (!r.ok) return res.json({ success: false, available: r.status !== 403, status: r.status, data: [], message: r.status === 403 ? "API key lacks 'hunts:read' scope" : r.data?.error });
+  res.json({ success: true, available: true, data: r.data?.hunts || [] });
+});
+
+app.get('/api/sn/hunts/:id', async (req, res) => {
+  const r = await snRequest('get', `/api/v1/hunts/${encodeURIComponent(req.params.id)}`);
+  if (!r.ok) return res.json({ success: false, status: r.status, message: r.data?.error });
+  res.json({ success: true, data: r.data?.hunt || r.data });
+});
+
+// --- Slot database (needs games:read scope) ---
+app.get('/api/sn/games', async (req, res) => {
+  const r = await snRequest('get', '/api/v1/games', { params: { limit: Math.min(parseInt(req.query.limit) || 100, 1000) } });
+  if (!r.ok) return res.json({ success: false, available: r.status !== 403, status: r.status, data: [], message: r.status === 403 ? "API key lacks 'games:read' scope" : r.data?.error });
+  res.json({ success: true, available: true, data: r.data?.games || [] });
+});
+
+// --- Viewer slot requests (needs slot-requests:read scope) ---
+app.get('/api/sn/slot-requests', async (req, res) => {
+  const r = await snRequest('get', '/api/v1/slot-requests', { params: { limit: 50, status: req.query.status } });
+  if (!r.ok) return res.json({ success: false, available: r.status !== 403, status: r.status, data: [], message: r.status === 403 ? "API key lacks 'slot-requests:read' scope" : r.data?.error });
+  res.json({ success: true, available: true, data: r.data?.slotRequests || [] });
 });
 
 app.post('/api/auth/start', async (req, res) => {

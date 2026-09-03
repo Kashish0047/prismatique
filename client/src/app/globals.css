@@ -3196,3 +3196,83 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
   font-weight: 900;
   color: var(--gold);
 }
+
+/* ===== StreamNeeds raffles / shop / banned games ===== */
+.raffle-img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+}
+.raffle-winner {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  width: 100%;
+}
+.raffle-buy { display: flex; gap: 10px; align-items: stretch; width: 100%; }
+.raffle-buy .raffle-btn { flex: 1; margin-top: 0; }
+.qty-stepper {
+  display: flex; align-items: center; gap: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 2px;
+}
+.qty-stepper button {
+  width: 34px; height: 34px;
+  background: rgba(255,255,255,0.05);
+  border: none; border-radius: 9px;
+  color: #fff; font-size: 1.1rem; font-weight: 900; cursor: pointer;
+}
+.qty-stepper button:hover { background: var(--accent); color: #000; }
+.qty-stepper span { min-width: 26px; text-align: center; font-weight: 900; }
+.raffle-draw-date { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 0.5px; }
+
+.shop-sale-tag {
+  position: absolute; top: 12px; left: 12px;
+  background: #53fc18; color: #000;
+  font-size: 0.65rem; font-weight: 900; letter-spacing: 1px;
+  padding: 5px 10px; border-radius: 8px;
+}
+.shop-price-was {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  font-weight: 700;
+}
+
+.banned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.banned-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 68, 68, 0.18);
+  border-radius: 18px;
+  overflow: hidden;
+}
+.banned-img { width: 100%; height: 150px; object-fit: cover; filter: grayscale(0.6) brightness(0.7); }
+.banned-img-ph { display: flex; align-items: center; justify-content: center; font-size: 3rem; background: rgba(0,0,0,0.3); }
+.banned-body { padding: 18px 20px 22px; }
+.banned-body h3 { font-size: 1.05rem; font-weight: 900; margin: 0 0 8px; }
+.banned-reason { font-size: 0.85rem; color: var(--text-secondary); font-style: italic; margin: 0 0 8px; }
+.banned-by { font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: rgba(255,255,255,0.35); text-transform: uppercase; }
+.banned-tag {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(255, 68, 68, 0.9); color: #fff;
+  font-size: 0.62rem; font-weight: 900; letter-spacing: 1.5px;
+  padding: 5px 10px; border-radius: 8px;
+}
+@media (max-width: 640px) { .banned-grid { grid-template-columns: 1fr; } }

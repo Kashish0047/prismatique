@@ -111,7 +111,7 @@ export default function Home() {
 
   const fetchRafflesAndGiveaways = async () => {
     try {
-      const rRes = await fetch(`${API}/raffles`);
+      const rRes = await fetch(`${API}/sn/raffles?status=all`);
       const rData = await rRes.json();
       if (rData.success) setRaffles(rData.data);
 
@@ -331,29 +331,24 @@ export default function Home() {
           <h2 className="section-title">DAILY <span className="highlight-blue">RAFFLES & GIVEAWAYS</span></h2>
           <div className="raffle-grid">
             {raffles.length > 0 ? raffles.slice(0, 3).map(raffle => (
-              <div className="flip-card" key={raffle._id}>
+              <div className="flip-card" key={raffle.id}>
                 <div className="flip-card-inner">
                   <div className="flip-card-front">
                     <div className={`raffle-badge ${raffle.status === 'active' ? 'pulse-badge' : 'upcoming'}`}>
-                      {raffle.status.toUpperCase()}
+                      {(raffle.status || '').toUpperCase()}
                     </div>
                     <div className="raffle-icon-large">🎟️</div>
                     <h3 className="raffle-title-large">{raffle.title}</h3>
-                    <div className="raffle-prize-large">{raffle.prize}</div>
-                    <p className="raffle-hint">Hover to Register</p>
+                    <div className="raffle-prize-large">{raffle.ticketPrice} pts / ticket</div>
+                    <p className="raffle-hint">Hover for details</p>
                   </div>
                   <div className="flip-card-back">
-                    <h3>REQUIREMENTS</h3>
-                    <p className="raffle-req-text">{raffle.requirement || 'No specific requirements. Open for all players.'}</p>
+                    <h3>{raffle.title}</h3>
+                    <p className="raffle-req-text">{raffle.description || 'Spend your points on tickets to enter.'}</p>
                     <div className="raffle-meta">
-                      <span><i className="fas fa-users"></i> {raffle.entries}/{raffle.maxEntries}</span>
+                      <span><i className="fas fa-users"></i> {raffle.totalEntries} entrants · {raffle.totalTickets} tickets</span>
                     </div>
-                    <button 
-                      className="register-btn" 
-                      onClick={(e) => handleEntry(e, raffle._id, 'raffle')}
-                    >
-                      REGISTER NOW
-                    </button>
+                    <Link href="/raffles" className="register-btn">VIEW RAFFLE</Link>
                   </div>
                 </div>
               </div>

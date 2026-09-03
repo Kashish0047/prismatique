@@ -1,0 +1,112 @@
+'use client';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import Navbar from '@/components/Navbar';
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+export default function BannedGamesPage() {
+  const [user, setUser] = useState(null);
+  const [coins, setCoins] = useState(0);
+  const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('prism_auth_v2');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        setCoins(parsed.coins || 0);
+      } catch (e) {}
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const justLoggedOut = sessionStorage.getItem('just_logged_out');
+    if (params.get('login_success') === 'true' && !justLoggedOut) {
+      const userData = {
+        username: params.get('username'),
+        avatar: decodeURIComponent(params.get('avatar') || ''),
+        coins: parseInt(params.get('coins') || '100', 10)
+      };
+      setUser(userData);
+      setCoins(userData.coins);
+      localStorage.setItem('prism_auth_v2', JSON.stringify(userData));
+      sessionStorage.removeItem('just_logged_out');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.href = window.location.pathname;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(`${API}/sn/banned-games`);
+        const data = await res.json();
+        if (data.success) setGames(data.data);
+      } catch (e) {} finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('prism_auth_v2');
+    sessionStorage.setItem('just_logged_out', 'true');
+    setUser(null);
+    setCoins(0);
+    window.location.replace(window.location.pathname);
+  };
+
+  const startLogin = () => {
+    sessionStorage.removeItem('just_logged_out');
+    window.location.href = `${API}/auth/kick?return_to=${encodeURIComponent(window.location.pathname)}`;
+  };
+
+  return (
+    <main className="min-h-screen bg-dark">
+      <Navbar user={user} onLogout={handleLogout} onLoginClick={startLogin} coins={coins} />
+
+      <section className="section-padding pt-32">
+        <div className="container">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-10">
+            <h1 className="section-title">BANNED <span className="highlight-blue">GAMES</span></h1>
+            <p className="page-subtitle">Slots Prismatique will not play on bonus hunts.</p>
+          </motion.div>
+
+          {loading ? (
+            <div className="text-center py-20 w-full opacity-50">LOADING...</div>
+          ) : games.length === 0 ? (
+            <div className="text-center py-20 w-full opacity-50">NO BANNED GAMES.</div>
+          ) : (
+            <div className="banned-grid">
+              {games.map((g, i) => (
+                <motion.div
+                  key={g.id || i}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="banned-card"
+                >
+                  {g.gameImage
+                    ? <img src={g.gameImage} alt={g.gameName} className="banned-img" />
+                    : <div className="banned-img banned-img-ph">🎰</div>}
+                  <div className="banned-body">
+                    <h3>{g.gameName}</h3>
+                    {g.reason && <p className="banned-reason">“{g.reason}”</p>}
+                    {g.bannedBy && <span className="banned-by">banned by {g.bannedBy}</span>}
+                  </div>
+                  <div className="banned-tag">BANNED</div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <footer>
+        <div className="container">
+          <p>&copy; 2024 PRISMATIQUE. ALL RIGHTS RESERVED.</p>
+        </div>
+      </footer>
+    </main>
+  );
+}
