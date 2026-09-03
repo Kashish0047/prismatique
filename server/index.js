@@ -139,6 +139,40 @@ async function fetchStreamneeds(apiKey, limit = 20) {
   return data;
 }
 
+// Parse admin prize text into rank-range tiers.
+// Accepts lines like:  "1: $1000"  "#1 - $1k"  "4-25: $20"  "#4-#25 $20 each"  "26 to 50: $10"
+function parsePrizeTiers(text) {
+  if (!text) return [];
+  const out = [];
+  for (const raw of String(text).split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    let rankPart, reward;
+    const d = line.indexOf('$');
+    if (d > 0) {
+      rankPart = line.slice(0, d);
+      reward = line.slice(d).trim();
+    } else if (line.includes(':')) {
+      const i = line.indexOf(':');
+      rankPart = line.slice(0, i);
+      reward = line.slice(i + 1).trim();
+    } else {
+      continue;
+    }
+    rankPart = rankPart.replace(/#/g, '').replace(/place/gi, '').replace(/[\s:\u2013-]+$/, '').trim();
+    if (!reward) continue;
+    const r = rankPart.match(/^(\d+)\s*(?:[-\u2013]|to)\s*(\d+)$/i);
+    if (r) {
+      const a = +r[1], b = +r[2];
+      out.push({ from: Math.min(a, b), to: Math.max(a, b), reward });
+    } else {
+      const s = rankPart.match(/(\d+)/);
+      if (s) out.push({ from: +s[1], to: +s[1], reward });
+    }
+  }
+  return out.sort((x, y) => x.from - y.from);
+}
+
 // Apply the per-period baseline (if enabled) and re-rank.
 function computeStandings(board, live) {
   let rows = live;
@@ -165,7 +199,8 @@ function publicBoard(b) {
     name: b.name,
     platform: b.platform,
     prizeText: b.prizeText,
-    prizes: b.prizes || [],
+    prizeTiers: b.prizeTiers || [],
+    endsAt: b.endsAt || null,
     metricLabel: b.metricLabel || 'WAGER',
     accentColor: b.accentColor,
     order: b.order,
@@ -530,7 +565,9 @@ app.post('/api/admin/leaderboards', async (req, res) => {
   const { token } = req.headers;
   if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
   try {
-    const board = new Leaderboard(req.body);
+    const body = { ...req.body };
+    if (typeof body.prizeText === 'string') body.prizeTiers = parsePrizeTiers(body.prizeText);
+    const board = new Leaderboard(body);
     await board.save();
     res.json({ success: true, data: board });
   } catch (err) {
@@ -542,7 +579,9 @@ app.put('/api/admin/leaderboards/:id', async (req, res) => {
   const { token } = req.headers;
   if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
   try {
-    const board = await Leaderboard.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const body = { ...req.body };
+    if (typeof body.prizeText === 'string') body.prizeTiers = parsePrizeTiers(body.prizeText);
+    const board = await Leaderboard.findByIdAndUpdate(req.params.id, body, { new: true });
     res.json({ success: true, data: board });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error updating leaderboard" });

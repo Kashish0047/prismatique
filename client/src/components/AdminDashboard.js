@@ -45,9 +45,11 @@ export default function AdminDashboard({ onLogout }) {
     title: '', prize: '', description: '', requirement: '', type: 'display', status: 'active', maxEntries: 1000
   });
 
-  const [newLeaderboard, setNewLeaderboard] = useState({
-    name: '', platform: '', apiKey: '', limit: 20, prizesText: '', metricLabel: 'WAGER', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
-  });
+  const emptyLeaderboard = {
+    name: '', platform: '', apiKey: '', limit: 20, prizeText: '', endsAt: '', metricLabel: 'WAGER', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
+  };
+  const [newLeaderboard, setNewLeaderboard] = useState(emptyLeaderboard);
+  const [editingLbId, setEditingLbId] = useState(null);
 
   const [newShopItem, setNewShopItem] = useState({
     title: '', description: '', image: '', price: 0, quantity: -1, status: 'active', order: 0
@@ -130,18 +132,43 @@ export default function AdminDashboard({ onLogout }) {
     }
   };
 
-  const handleCreateLeaderboard = async (e) => {
+  const openNewLeaderboard = () => {
+    setEditingLbId(null);
+    setNewLeaderboard({ ...emptyLeaderboard, apiKey: defaultApiKey });
+    setModalType('leaderboard');
+    setIsAdding(true);
+  };
+
+  const openEditLeaderboard = (lb) => {
+    setEditingLbId(lb._id);
+    setNewLeaderboard({
+      name: lb.name || '', platform: lb.platform || '', apiKey: lb.apiKey || '',
+      limit: lb.limit ?? 20, prizeText: lb.prizeText || '',
+      endsAt: lb.endsAt ? new Date(lb.endsAt).toISOString().slice(0, 16) : '',
+      metricLabel: lb.metricLabel || 'WAGER', accentColor: lb.accentColor || '#00f2ff',
+      order: lb.order ?? 0, active: lb.active !== false, useBaseline: lb.useBaseline !== false
+    });
+    setModalType('leaderboard');
+    setIsAdding(true);
+  };
+
+  const handleSubmitLeaderboard = async (e) => {
     e.preventDefault();
     try {
-      const { prizesText, ...rest } = newLeaderboard;
-      const payload = { ...rest, prizes: (prizesText || '').split('\n').map(s => s.trim()).filter(Boolean) };
-      await axios.post(`${API}/admin/leaderboards`, payload, { headers: { token } });
+      const payload = { ...newLeaderboard, endsAt: newLeaderboard.endsAt || null };
+      if (editingLbId) {
+        await axios.put(`${API}/admin/leaderboards/${editingLbId}`, payload, { headers: { token } });
+        toast.success('Leaderboard updated!');
+      } else {
+        await axios.post(`${API}/admin/leaderboards`, payload, { headers: { token } });
+        toast.success('Leaderboard created!');
+      }
       setIsAdding(false);
+      setEditingLbId(null);
+      setNewLeaderboard(emptyLeaderboard);
       fetchAllData();
-      toast.success('Leaderboard created successfully!');
-      setNewLeaderboard({ name: '', platform: '', apiKey: '', limit: 20, prizesText: '', metricLabel: 'WAGER', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true });
     } catch (err) {
-      toast.error('Error creating leaderboard');
+      toast.error('Error saving leaderboard');
     }
   };
 
@@ -254,7 +281,7 @@ export default function AdminDashboard({ onLogout }) {
             {activeTab === 'raffles' && <button className="admin-add-btn" onClick={() => { setModalType('raffle'); setIsAdding(true); }}>+ NEW RAFFLE</button>}
             {activeTab === 'giveaways' && <button className="admin-add-btn" onClick={() => { setModalType('giveaway'); setIsAdding(true); }}>+ NEW GIVEAWAY</button>}
             {activeTab === 'challenges' && <button className="admin-add-btn" onClick={() => { setModalType('challenge'); setIsAdding(true); }}>+ NEW CHALLENGE</button>}
-            {activeTab === 'leaderboards' && <button className="admin-add-btn" onClick={() => { setModalType('leaderboard'); setNewLeaderboard(s => ({ ...s, apiKey: s.apiKey || defaultApiKey })); setIsAdding(true); }}>+ NEW LEADERBOARD</button>}
+            {activeTab === 'leaderboards' && <button className="admin-add-btn" onClick={openNewLeaderboard}>+ NEW LEADERBOARD</button>}
             {activeTab === 'shop' && <button className="admin-add-btn" onClick={() => { setModalType('shopitem'); setIsAdding(true); }}>+ NEW ITEM</button>}
           </header>
 
@@ -382,7 +409,7 @@ export default function AdminDashboard({ onLogout }) {
                   <div className="admin-table-wrapper">
                     <table className="admin-table">
                       <thead>
-                        <tr><th>NAME</th><th>PLATFORM</th><th>ACTIVE</th><th>PERIOD STARTED</th><th>ACTIONS</th></tr>
+                        <tr><th>NAME</th><th>PLATFORM</th><th>ACTIVE</th><th>ENDS</th><th>ACTIONS</th></tr>
                       </thead>
                       <tbody>
                         {leaderboards.map(lb => (
@@ -390,8 +417,9 @@ export default function AdminDashboard({ onLogout }) {
                             <td>{lb.name}</td>
                             <td>{lb.platform || '—'}</td>
                             <td><span className={`status-pill ${lb.active ? 'active' : 'ended'}`}>{lb.active ? 'yes' : 'no'}</span></td>
-                            <td>{lb.periodStartedAt ? new Date(lb.periodStartedAt).toLocaleDateString() : 'N/A'}</td>
+                            <td>{lb.endsAt ? new Date(lb.endsAt).toLocaleDateString() : '—'}</td>
                             <td style={{ display: 'flex', gap: '8px' }}>
+                              <button className="view-list-btn" onClick={() => openEditLeaderboard(lb)}>✏️ EDIT</button>
                               <button className="view-list-btn" onClick={() => handleResetLeaderboard(lb._id, lb.name)}>🔄 RESET</button>
                               <button className="action-btn delete" onClick={() => handleDelete(lb._id, 'leaderboard')}>🗑️</button>
                             </td>
@@ -442,7 +470,7 @@ export default function AdminDashboard({ onLogout }) {
         {isAdding && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="admin-modal-overlay">
             <motion.div initial={{ y: 50 }} animate={{ y: 0 }} className="admin-modal glass-panel">
-              <h3>CREATE NEW {modalType.toUpperCase()}</h3>
+              <h3>{editingLbId && modalType === 'leaderboard' ? 'EDIT LEADERBOARD' : `CREATE NEW ${modalType.toUpperCase()}`}</h3>
 
               {(modalType === 'raffle' || modalType === 'giveaway') && (
               <form onSubmit={modalType === 'raffle' ? handleCreateRaffle : handleCreateGiveaway} className="admin-form">
@@ -502,11 +530,22 @@ export default function AdminDashboard({ onLogout }) {
               )}
 
               {modalType === 'leaderboard' && (
-              <form onSubmit={handleCreateLeaderboard} className="admin-form">
+              <form onSubmit={handleSubmitLeaderboard} className="admin-form">
                 <input placeholder="Name (e.g. Qzino Monthly Wager)" required value={newLeaderboard.name} onChange={(e) => setNewLeaderboard({...newLeaderboard, name: e.target.value})} />
                 <input placeholder="Platform label / tab name (e.g. Qzino)" value={newLeaderboard.platform} onChange={(e) => setNewLeaderboard({...newLeaderboard, platform: e.target.value})} />
                 <input placeholder="StreamNeeds API key (bh_sk_...)" required value={newLeaderboard.apiKey} onChange={(e) => setNewLeaderboard({...newLeaderboard, apiKey: e.target.value})} />
-                <textarea placeholder="Rewards — one per line, top rank first (e.g.&#10;$250&#10;$100&#10;$50)" value={newLeaderboard.prizesText} onChange={(e) => setNewLeaderboard({...newLeaderboard, prizesText: e.target.value})} />
+
+                <label className="admin-field-label">Rewards — one rank or range per line</label>
+                <textarea
+                  rows={6}
+                  placeholder={"1: $1,000\n2: $500\n3: $100\n4-25: $20\n26-50: $10"}
+                  value={newLeaderboard.prizeText}
+                  onChange={(e) => setNewLeaderboard({...newLeaderboard, prizeText: e.target.value})}
+                />
+
+                <label className="admin-field-label">Race end date</label>
+                <input type="datetime-local" value={newLeaderboard.endsAt} onChange={(e) => setNewLeaderboard({...newLeaderboard, endsAt: e.target.value})} />
+
                 <div className="form-row">
                   <input placeholder="Wager column label (e.g. WAGER)" value={newLeaderboard.metricLabel} onChange={(e) => setNewLeaderboard({...newLeaderboard, metricLabel: e.target.value})} />
                   <input type="color" title="Tab accent colour" value={newLeaderboard.accentColor} onChange={(e) => setNewLeaderboard({...newLeaderboard, accentColor: e.target.value})} style={{ height: '50px', padding: '4px' }} />
@@ -518,8 +557,8 @@ export default function AdminDashboard({ onLogout }) {
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.active} onChange={(e) => setNewLeaderboard({...newLeaderboard, active: e.target.checked})} /> Active (visible on site)</label>
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.useBaseline} onChange={(e) => setNewLeaderboard({...newLeaderboard, useBaseline: e.target.checked})} /> Per-period board (subtract points captured at each reset)</label>
                 <div className="modal-actions">
-                  <button type="button" className="cancel-btn" onClick={() => setIsAdding(false)}>CANCEL</button>
-                  <button type="submit" className="confirm-btn">CREATE</button>
+                  <button type="button" className="cancel-btn" onClick={() => { setIsAdding(false); setEditingLbId(null); }}>CANCEL</button>
+                  <button type="submit" className="confirm-btn">{editingLbId ? 'SAVE' : 'CREATE'}</button>
                 </div>
               </form>
               )}
@@ -625,6 +664,8 @@ export default function AdminDashboard({ onLogout }) {
         .admin-form input, .admin-form textarea, .admin-form select { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 12px; color: #fff; font-weight: 600; outline: none; }
         .admin-check { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700; color: #94a3b8; cursor: pointer; }
         .admin-check input { width: auto; }
+        .admin-field-label { font-size: 0.7rem; font-weight: 900; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: -10px; }
+        .admin-form textarea { min-height: 90px; font-family: inherit; }
         .admin-form textarea { height: 100px; resize: none; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }

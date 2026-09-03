@@ -3124,3 +3124,75 @@ footer { padding: 80px 0; text-align: center; border-top: 1px solid rgba(255, 25
 }
 .raffle-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .raffle-btn:disabled:hover { background: transparent; color: #53fc18; box-shadow: none; }
+
+/* ===== Leaderboard countdown + prize tiers ===== */
+.lb-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 26px auto 6px;
+  padding: 14px 22px;
+  max-width: 620px;
+  background: linear-gradient(135deg, rgba(83,252,24,0.06), rgba(0,242,255,0.06));
+  border: 1px solid rgba(0,242,255,0.15);
+  border-radius: 16px;
+}
+.lb-cd-label {
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+}
+.lb-cd-seg {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 1.5rem;
+  font-weight: 950;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.lb-cd-seg i {
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 1px;
+}
+.lb-cd-ended {
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ff6b6b;
+}
+
+.lb-prizes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  max-width: 900px;
+  margin: 18px auto 8px;
+}
+.lb-prize-tier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+.lb-prize-rank {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+}
+.lb-prize-reward {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--gold);
+}

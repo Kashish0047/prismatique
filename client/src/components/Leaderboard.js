@@ -32,6 +32,12 @@ export default function Leaderboard({ preview = false }) {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -79,12 +85,31 @@ export default function Leaderboard({ preview = false }) {
   }, [activeId, fetchStandings]);
 
   const metric = board?.metricLabel || 'WAGER';
-  const prizes = board?.prizes || [];
-  const rewardFor = (rank) => prizes[rank - 1] || '';
-  const hasRewards = prizes.length > 0;
+  const tiers = board?.prizeTiers || [];
+  const rewardFor = (rank) => {
+    const t = tiers.find(t => rank >= t.from && rank <= t.to);
+    return t ? t.reward : '';
+  };
+  const hasRewards = tiers.length > 0;
   const top3 = standings.slice(0, 3);
   const rest = preview ? standings.slice(3, 5) : standings.slice(3);
   const updatedTime = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null;
+
+  const tierLabel = (t) => t.from === t.to ? `#${t.from}` : `#${t.from}–#${t.to}`;
+
+  const endMs = board?.endsAt ? new Date(board.endsAt).getTime() : 0;
+  const remaining = endMs ? endMs - now : 0;
+  const ended = endMs && remaining <= 0;
+  const cd = (() => {
+    if (!endMs || remaining <= 0) return null;
+    const s = Math.floor(remaining / 1000);
+    return {
+      d: String(Math.floor(s / 86400)).padStart(2, '0'),
+      h: String(Math.floor((s % 86400) / 3600)).padStart(2, '0'),
+      m: String(Math.floor((s % 3600) / 60)).padStart(2, '0'),
+      s: String(s % 60).padStart(2, '0'),
+    };
+  })();
 
   if (!loading && boards.length === 0) {
     return (
@@ -142,7 +167,32 @@ export default function Leaderboard({ preview = false }) {
           </>
         )}
 
-        {board?.prizeText && !preview && <div className="wr-prize lb-prize">{board.prizeText}</div>}
+        {!preview && (cd || ended) && (
+          <div className="lb-countdown">
+            {ended ? (
+              <span className="lb-cd-ended">🏁 THIS RACE HAS ENDED</span>
+            ) : (
+              <>
+                <span className="lb-cd-label">⏳ ENDS IN</span>
+                <span className="lb-cd-seg">{cd.d}<i>D</i></span>
+                <span className="lb-cd-seg">{cd.h}<i>H</i></span>
+                <span className="lb-cd-seg">{cd.m}<i>M</i></span>
+                <span className="lb-cd-seg">{cd.s}<i>S</i></span>
+              </>
+            )}
+          </div>
+        )}
+
+        {!preview && hasRewards && (
+          <div className="lb-prizes">
+            {tiers.map((t, i) => (
+              <div key={i} className="lb-prize-tier">
+                <span className="lb-prize-rank">{tierLabel(t)}</span>
+                <span className="lb-prize-reward">{t.reward}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-20 w-full opacity-50">LOADING STANDINGS...</div>
