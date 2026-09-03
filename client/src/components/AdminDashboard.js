@@ -29,8 +29,6 @@ export default function AdminDashboard({ onLogout }) {
   const [leaderboards, setLeaderboards] = useState([]);
   const [shopItems, setShopItems] = useState([]);
   const [defaultApiKey, setDefaultApiKey] = useState('');
-  const [settings, setSettings] = useState({ streamneedsApiKey: '', streamneedsUserId: '' });
-  const [snStatus, setSnStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [modalType, setModalType] = useState('raffle'); // 'raffle' | 'giveaway' | 'challenge' | 'leaderboard'
@@ -87,13 +85,6 @@ export default function AdminDashboard({ onLogout }) {
       } else if (activeTab === 'shop') {
         const res = await axios.get(`${API}/admin/shop`, { headers: { token } });
         setShopItems(res.data.data);
-      } else if (activeTab === 'settings') {
-        const [s, st] = await Promise.all([
-          axios.get(`${API}/admin/settings`, { headers: { token } }),
-          axios.get(`${API}/admin/sn/status`, { headers: { token } }).catch(() => null)
-        ]);
-        setSettings(s.data.data);
-        setSnStatus(st ? st.data : null);
       }
     } catch (err) {
       console.error(err);
@@ -178,17 +169,6 @@ export default function AdminDashboard({ onLogout }) {
       fetchAllData();
     } catch (err) {
       toast.error('Error saving leaderboard');
-    }
-  };
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(`${API}/admin/settings`, settings, { headers: { token } });
-      toast.success('Settings saved!');
-      fetchAllData();
-    } catch (err) {
-      toast.error('Error saving settings');
     }
   };
 
@@ -290,9 +270,6 @@ export default function AdminDashboard({ onLogout }) {
             </button>
             <button className={`admin-nav-item ${activeTab === 'shop' ? 'active' : ''}`} onClick={() => setActiveTab('shop')}>
               🛍️ SHOP
-            </button>
-            <button className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
-              ⚙️ SETTINGS
             </button>
           </nav>
           <button className="admin-logout-btn" onClick={onLogout}>LOGOUT</button>
@@ -484,33 +461,6 @@ export default function AdminDashboard({ onLogout }) {
                   </div>
                 )}
 
-                {activeTab === 'settings' && (
-                  <div className="settings-panel">
-                    <form onSubmit={handleSaveSettings} className="admin-form" style={{ maxWidth: 560 }}>
-                      <h2 style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: 1 }}>STREAMNEEDS CONNECTION</h2>
-                      <label className="admin-field-label">API key (bh_sk_…)</label>
-                      <input value={settings.streamneedsApiKey} onChange={(e) => setSettings({ ...settings, streamneedsApiKey: e.target.value })} placeholder="bh_sk_..." />
-                      <label className="admin-field-label">Your StreamNeeds User ID</label>
-                      <input value={settings.streamneedsUserId} onChange={(e) => setSettings({ ...settings, streamneedsUserId: e.target.value })} placeholder="00000000-0000-0000-0000-000000000000" />
-                      <button type="submit" className="confirm-btn">SAVE</button>
-                    </form>
-
-                    {snStatus && (
-                      <div className="sn-status">
-                        <h3>API SCOPE STATUS</h3>
-                        <ul>
-                          {Object.entries(snStatus.checks || {}).map(([k, v]) => (
-                            <li key={k}>
-                              <span className={`sn-dot ${v === 'ok' ? 'ok' : v === 'no-scope' ? 'warn' : 'err'}`}></span>
-                              <strong>{k}</strong> — {v === 'ok' ? 'connected' : v === 'no-scope' ? 'scope not enabled on key' : v}
-                            </li>
-                          ))}
-                        </ul>
-                        <p className="sn-hint">Features marked “scope not enabled” need that permission added to the API key in your StreamNeeds dashboard.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -715,16 +665,6 @@ export default function AdminDashboard({ onLogout }) {
         .admin-check input { width: auto; }
         .admin-field-label { font-size: 0.7rem; font-weight: 900; letter-spacing: 1.5px; color: #94a3b8; margin-bottom: -10px; }
         .admin-form textarea { min-height: 90px; font-family: inherit; }
-        .settings-panel { display: flex; flex-direction: column; gap: 40px; }
-        .sn-status h3 { font-size: 0.85rem; font-weight: 900; letter-spacing: 2px; color: #00f2ff; margin-bottom: 16px; }
-        .sn-status ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        .sn-status li { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #cbd5e1; }
-        .sn-status strong { text-transform: capitalize; }
-        .sn-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-        .sn-dot.ok { background: #53fc18; box-shadow: 0 0 8px #53fc18; }
-        .sn-dot.warn { background: #f59e0b; }
-        .sn-dot.err { background: #ff4444; }
-        .sn-hint { margin-top: 14px; font-size: 0.8rem; color: #94a3b8; }
         .admin-form textarea { height: 100px; resize: none; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
