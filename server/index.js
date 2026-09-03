@@ -411,8 +411,32 @@ app.get('/api/admin/users', async (req, res) => {
   if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
 
   try {
-    const users = await User.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: users });
+    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const cfg = await getSN();
+
+    // Live StreamNeeds point balance per user, looked up individually by Kick
+    // username (the /points endpoint is authoritative; the leaderboard feed can
+    // be briefly inconsistent). Capped + run in small batches.
+    const cap = 120;
+    const targets = users.filter(u => u.username).slice(0, cap);
+    const snPointsByUser = new Map();
+
+    if (cfg.key) {
+      const batchSize = 12;
+      for (let i = 0; i < targets.length; i += batchSize) {
+        const batch = targets.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (u) => {
+          const r = await snRequest('get', `/api/public/users/${encodeURIComponent(String(u.username).trim())}/points`);
+          snPointsByUser.set(u._id.toString(), r.ok ? (Number(r.data?.points) || 0) : null);
+        }));
+      }
+    }
+
+    const data = users
+      .map(u => ({ ...u, snPoints: snPointsByUser.has(u._id.toString()) ? snPointsByUser.get(u._id.toString()) : null }))
+      .sort((a, b) => (b.snPoints ?? -1) - (a.snPoints ?? -1));
+
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: "Error fetching users" });
   }

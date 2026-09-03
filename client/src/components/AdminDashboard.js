@@ -380,7 +380,7 @@ export default function AdminDashboard({ onLogout }) {
                   <div className="admin-table-wrapper">
                     <table className="admin-table">
                       <thead>
-                        <tr><th>USER</th><th>COINS</th><th>REGISTERED</th></tr>
+                        <tr><th>USER</th><th>SN POINTS</th><th>REGISTERED</th></tr>
                       </thead>
                       <tbody>
                         {users.map(u => (
@@ -389,7 +389,7 @@ export default function AdminDashboard({ onLogout }) {
                               <img src={u.avatar} alt={u.username} className="small-avatar" />
                               <span>{u.username}</span>
                             </td>
-                            <td>🪙 {u.coins.toLocaleString()}</td>
+                            <td>{u.snPoints != null ? `🪙 ${u.snPoints.toLocaleString()}` : <span style={{ opacity: 0.4 }}>— not on StreamNeeds</span>}</td>
                             <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : (u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A')}</td>
                           </tr>
                         ))}
