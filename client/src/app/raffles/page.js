@@ -100,9 +100,7 @@ export default function RafflesPage() {
           </motion.div>
 
           <div className="raffle-grid cards-grid-spacious">
-            {loading ? (
-              <div className="text-center py-20 w-full opacity-50">LOADING RAFFLES...</div>
-            ) : raffles.length > 0 ? (
+            {loading ? null : raffles.length > 0 ? (
               raffles.map((raffle) => {
                 const active = raffle.status === 'active';
                 const drawn = raffle.status === 'drawn';

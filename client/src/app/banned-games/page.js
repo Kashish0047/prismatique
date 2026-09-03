@@ -72,9 +72,7 @@ export default function BannedGamesPage() {
             <p className="page-subtitle">Slots Prismatique will not play on bonus hunts.</p>
           </motion.div>
 
-          {loading ? (
-            <div className="text-center py-20 w-full opacity-50">LOADING...</div>
-          ) : games.length === 0 ? (
+          {loading ? null : games.length === 0 ? (
             <div className="text-center py-20 w-full opacity-50">NO BANNED GAMES.</div>
           ) : (
             <div className="banned-grid">

@@ -109,9 +109,7 @@ export default function ChallengesPage() {
           </motion.div>
 
           <div className="raffle-grid cards-grid-spacious">
-            {loading ? (
-              <div className="text-center py-20 w-full opacity-50">LOADING CHALLENGES...</div>
-            ) : challenges.length > 0 ? (
+            {loading ? null : challenges.length > 0 ? (
               challenges.map((challenge) => {
                 const enterable = challenge.type === 'enterable';
                 const isActive = challenge.status === 'active';

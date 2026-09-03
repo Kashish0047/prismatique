@@ -95,9 +95,7 @@ export default function ShopPage() {
             <p className="page-subtitle">Spend your points on rewards. Items are managed in StreamNeeds.</p>
           </motion.div>
 
-          {loading ? (
-            <div className="text-center py-20 w-full opacity-50">LOADING SHOP...</div>
-          ) : items.length === 0 ? (
+          {loading ? null : items.length === 0 ? (
             <div className="rewards-content-wrapper">
               <div className="wager-rewards-coming">
                 <div className="coming-soon-card-premium">

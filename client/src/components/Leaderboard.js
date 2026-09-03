@@ -56,9 +56,9 @@ export default function Leaderboard({ preview = false }) {
     })();
   }, []);
 
-  const fetchStandings = useCallback(async (id) => {
+  const fetchStandings = useCallback(async (id, { silent = false } = {}) => {
     if (!id) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setMessage('');
     try {
       const res = await fetch(`${API}/leaderboards/${id}/standings`);
@@ -80,7 +80,7 @@ export default function Leaderboard({ preview = false }) {
 
   useEffect(() => {
     if (!activeId) return;
-    const t = setInterval(() => fetchStandings(activeId), 60000);
+    const t = setInterval(() => fetchStandings(activeId, { silent: true }), 60000);
     return () => clearInterval(t);
   }, [activeId, fetchStandings]);
 
@@ -194,9 +194,7 @@ export default function Leaderboard({ preview = false }) {
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center py-20 w-full opacity-50">LOADING STANDINGS...</div>
-        ) : message ? (
+        {loading ? null : message ? (
           <div className="text-center py-20 w-full opacity-60">{message}</div>
         ) : standings.length === 0 ? (
           <div className="text-center py-20 w-full opacity-50">NO STANDINGS YET FOR THIS RACE.</div>
