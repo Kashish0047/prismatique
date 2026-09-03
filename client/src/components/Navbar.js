@@ -57,7 +57,6 @@ export default function Navbar({ user, onLogout, onLoginClick, coins }) {
           <li><Link href="/challenges" className="nav-link" onClick={() => setIsActive(false)}>CHALLENGES</Link></li>
           <li><Link href="/rankings" className="nav-link" onClick={() => setIsActive(false)}>LEADERBOARD</Link></li>
           <li><Link href="/shop" className="nav-link" onClick={() => setIsActive(false)}>SHOP</Link></li>
-          <li><Link href="/banned-games" className="nav-link" onClick={() => setIsActive(false)}>BANNED&nbsp;GAMES</Link></li>
           <li><Link href="/faq" className="nav-link" onClick={() => setIsActive(false)}>FAQ</Link></li>
 
           <li><Link href="/socials" className="nav-link" onClick={() => setIsActive(false)}>SOCIALS</Link></li>
