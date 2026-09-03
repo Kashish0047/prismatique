@@ -27,6 +27,7 @@ export default function AdminDashboard({ onLogout }) {
   const [users, setUsers] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [leaderboards, setLeaderboards] = useState([]);
+  const [shopItems, setShopItems] = useState([]);
   const [defaultApiKey, setDefaultApiKey] = useState('');
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -45,7 +46,11 @@ export default function AdminDashboard({ onLogout }) {
   });
 
   const [newLeaderboard, setNewLeaderboard] = useState({
-    name: '', platform: '', apiKey: '', limit: 20, prizeText: '', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
+    name: '', platform: '', apiKey: '', limit: 20, prizeText: '', metricLabel: 'POINTS', accentColor: '#00f2ff', order: 0, active: true, useBaseline: true
+  });
+
+  const [newShopItem, setNewShopItem] = useState({
+    title: '', description: '', image: '', price: 0, quantity: -1, status: 'active', order: 0
   });
 
   const [viewingParticipants, setViewingParticipants] = useState(null);
@@ -75,6 +80,9 @@ export default function AdminDashboard({ onLogout }) {
         const res = await axios.get(`${API}/admin/leaderboards`, { headers: { token } });
         setLeaderboards(res.data.data);
         setDefaultApiKey(res.data.defaultApiKey || '');
+      } else if (activeTab === 'shop') {
+        const res = await axios.get(`${API}/admin/shop`, { headers: { token } });
+        setShopItems(res.data.data);
       }
     } catch (err) {
       console.error(err);
@@ -135,6 +143,19 @@ export default function AdminDashboard({ onLogout }) {
     }
   };
 
+  const handleCreateShopItem = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/admin/shop`, newShopItem, { headers: { token } });
+      setIsAdding(false);
+      fetchAllData();
+      toast.success('Shop item added!');
+      setNewShopItem({ title: '', description: '', image: '', price: 0, quantity: -1, status: 'active', order: 0 });
+    } catch (err) {
+      toast.error('Error adding shop item');
+    }
+  };
+
   const handleResetLeaderboard = (id, name) => {
     toast(({ closeToast }) => (
       <div className="confirm-toast">
@@ -169,7 +190,7 @@ export default function AdminDashboard({ onLogout }) {
         type={type}
         onConfirm={async () => {
           try {
-            const endpointMap = { raffle: 'raffles', giveaway: 'giveaways', challenge: 'challenges', leaderboard: 'leaderboards' };
+            const endpointMap = { raffle: 'raffles', giveaway: 'giveaways', challenge: 'challenges', leaderboard: 'leaderboards', shopitem: 'shop' };
             const endpoint = endpointMap[type] || 'raffles';
             const adminToken = localStorage.getItem('prism_admin_token');
             const res = await axios.delete(`${API}/admin/${endpoint}/${id}`, { 
@@ -218,6 +239,9 @@ export default function AdminDashboard({ onLogout }) {
             <button className={`admin-nav-item ${activeTab === 'leaderboards' ? 'active' : ''}`} onClick={() => setActiveTab('leaderboards')}>
               📊 LEADERBOARDS
             </button>
+            <button className={`admin-nav-item ${activeTab === 'shop' ? 'active' : ''}`} onClick={() => setActiveTab('shop')}>
+              🛍️ SHOP
+            </button>
           </nav>
           <button className="admin-logout-btn" onClick={onLogout}>LOGOUT</button>
         </aside>
@@ -229,6 +253,7 @@ export default function AdminDashboard({ onLogout }) {
             {activeTab === 'giveaways' && <button className="admin-add-btn" onClick={() => { setModalType('giveaway'); setIsAdding(true); }}>+ NEW GIVEAWAY</button>}
             {activeTab === 'challenges' && <button className="admin-add-btn" onClick={() => { setModalType('challenge'); setIsAdding(true); }}>+ NEW CHALLENGE</button>}
             {activeTab === 'leaderboards' && <button className="admin-add-btn" onClick={() => { setModalType('leaderboard'); setNewLeaderboard(s => ({ ...s, apiKey: s.apiKey || defaultApiKey })); setIsAdding(true); }}>+ NEW LEADERBOARD</button>}
+            {activeTab === 'shop' && <button className="admin-add-btn" onClick={() => { setModalType('shopitem'); setIsAdding(true); }}>+ NEW ITEM</button>}
           </header>
 
           <div className="admin-content">
@@ -377,6 +402,34 @@ export default function AdminDashboard({ onLogout }) {
                     </table>
                   </div>
                 )}
+
+                {activeTab === 'shop' && (
+                  <div className="admin-table-wrapper">
+                    <table className="admin-table">
+                      <thead>
+                        <tr><th>ITEM</th><th>PRICE</th><th>QTY</th><th>STATUS</th><th>ORDER</th><th>ACTIONS</th></tr>
+                      </thead>
+                      <tbody>
+                        {shopItems.map(item => (
+                          <tr key={item._id}>
+                            <td className="user-td">
+                              {item.image ? <img src={item.image} alt={item.title} className="small-avatar" style={{ borderRadius: '8px', objectFit: 'cover' }} /> : <span style={{ fontSize: '1.2rem' }}>🛍️</span>}
+                              <span>{item.title}</span>
+                            </td>
+                            <td>🪙 {(item.price || 0).toLocaleString()}</td>
+                            <td>{item.quantity < 0 ? '∞' : item.quantity}</td>
+                            <td><span className={`status-pill ${item.status === 'active' ? 'active' : item.status === 'soldout' ? 'ended' : 'upcoming'}`}>{item.status}</span></td>
+                            <td>{item.order}</td>
+                            <td><button className="action-btn delete" onClick={() => handleDelete(item._id, 'shopitem')}>🗑️</button></td>
+                          </tr>
+                        ))}
+                        {shopItems.length === 0 && (
+                          <tr><td colSpan={6} style={{ opacity: 0.5 }}>No shop items yet. Click "+ NEW ITEM".</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -453,11 +506,40 @@ export default function AdminDashboard({ onLogout }) {
                 <input placeholder="StreamNeeds API key (bh_sk_...)" required value={newLeaderboard.apiKey} onChange={(e) => setNewLeaderboard({...newLeaderboard, apiKey: e.target.value})} />
                 <textarea placeholder="Prize breakdown text (e.g. 1st $250 · 2nd $100 · 3rd $50)" value={newLeaderboard.prizeText} onChange={(e) => setNewLeaderboard({...newLeaderboard, prizeText: e.target.value})} />
                 <div className="form-row">
+                  <input placeholder="Metric label (e.g. WAGERED)" value={newLeaderboard.metricLabel} onChange={(e) => setNewLeaderboard({...newLeaderboard, metricLabel: e.target.value})} />
+                  <input type="color" title="Tab accent colour" value={newLeaderboard.accentColor} onChange={(e) => setNewLeaderboard({...newLeaderboard, accentColor: e.target.value})} style={{ height: '50px', padding: '4px' }} />
+                </div>
+                <div className="form-row">
                   <input type="number" placeholder="Show top N" value={newLeaderboard.limit} onChange={(e) => setNewLeaderboard({...newLeaderboard, limit: parseInt(e.target.value) || 20})} />
                   <input type="number" placeholder="Sort order" value={newLeaderboard.order} onChange={(e) => setNewLeaderboard({...newLeaderboard, order: parseInt(e.target.value) || 0})} />
                 </div>
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.active} onChange={(e) => setNewLeaderboard({...newLeaderboard, active: e.target.checked})} /> Active (visible on site)</label>
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.useBaseline} onChange={(e) => setNewLeaderboard({...newLeaderboard, useBaseline: e.target.checked})} /> Per-period board (subtract points captured at each reset)</label>
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setIsAdding(false)}>CANCEL</button>
+                  <button type="submit" className="confirm-btn">CREATE</button>
+                </div>
+              </form>
+              )}
+
+              {modalType === 'shopitem' && (
+              <form onSubmit={handleCreateShopItem} className="admin-form">
+                <input placeholder="Item title" required value={newShopItem.title} onChange={(e) => setNewShopItem({...newShopItem, title: e.target.value})} />
+                <textarea placeholder="Description" value={newShopItem.description} onChange={(e) => setNewShopItem({...newShopItem, description: e.target.value})} />
+                <input placeholder="Image URL (https://...)" value={newShopItem.image} onChange={(e) => setNewShopItem({...newShopItem, image: e.target.value})} />
+                {newShopItem.image && <img src={newShopItem.image} alt="preview" style={{ maxHeight: '120px', borderRadius: '10px', objectFit: 'cover' }} />}
+                <div className="form-row">
+                  <input type="number" placeholder="Price (coins)" value={newShopItem.price} onChange={(e) => setNewShopItem({...newShopItem, price: parseInt(e.target.value) || 0})} />
+                  <input type="number" placeholder="Quantity (-1 = unlimited)" value={newShopItem.quantity} onChange={(e) => setNewShopItem({...newShopItem, quantity: parseInt(e.target.value) })} />
+                </div>
+                <div className="form-row">
+                  <select value={newShopItem.status} onChange={(e) => setNewShopItem({...newShopItem, status: e.target.value})}>
+                    <option value="active">Active</option>
+                    <option value="hidden">Hidden</option>
+                    <option value="soldout">Sold out</option>
+                  </select>
+                  <input type="number" placeholder="Sort order" value={newShopItem.order} onChange={(e) => setNewShopItem({...newShopItem, order: parseInt(e.target.value) || 0})} />
+                </div>
                 <div className="modal-actions">
                   <button type="button" className="cancel-btn" onClick={() => setIsAdding(false)}>CANCEL</button>
                   <button type="submit" className="confirm-btn">CREATE</button>

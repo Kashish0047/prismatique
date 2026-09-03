@@ -19,6 +19,7 @@ const GameSession = require('./models/GameSession');
 const Challenge = require('./models/Challenge');
 const Leaderboard = require('./models/Leaderboard');
 const LeaderboardHistory = require('./models/LeaderboardHistory');
+const ShopItem = require('./models/ShopItem');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -593,6 +594,62 @@ app.post('/api/admin/leaderboards/:id/reset', async (req, res) => {
   } catch (err) {
     console.error('Leaderboard reset failed:', err.response?.status || err.message);
     res.status(500).json({ success: false, message: "Error resetting leaderboard (StreamNeeds unreachable?)" });
+  }
+});
+
+// --- SHOP ---
+
+app.get('/api/shop', async (req, res) => {
+  try {
+    const items = await ShopItem.find({ status: { $ne: 'hidden' } }).sort({ order: 1, createdAt: -1 });
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching shop items" });
+  }
+});
+
+app.get('/api/admin/shop', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const items = await ShopItem.find().sort({ order: 1, createdAt: -1 });
+    res.json({ success: true, data: items });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching shop items" });
+  }
+});
+
+app.post('/api/admin/shop', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const item = new ShopItem(req.body);
+    await item.save();
+    res.json({ success: true, data: item });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error creating shop item" });
+  }
+});
+
+app.put('/api/admin/shop/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    const item = await ShopItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ success: true, data: item });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error updating shop item" });
+  }
+});
+
+app.delete('/api/admin/shop/:id', async (req, res) => {
+  const { token } = req.headers;
+  if (token !== 'prism-admin-v1') return res.status(403).json({ success: false });
+  try {
+    await ShopItem.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error deleting shop item" });
   }
 });
 
