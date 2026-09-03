@@ -2108,51 +2108,6 @@ async function seedDatabase() {
       }
     }
 
-    const activityCount = await Activity.countDocuments();
-    if (activityCount === 0) {
-      console.log('🌱 Seeding initial activity data...');
-      const initialActivity = [
-        { user: "PlayerOne", action: "reached Level 24", timestamp: new Date() },
-        { user: "LuckyStar", action: "won $250 in a raffle", timestamp: new Date(Date.now() - 1000 * 60 * 5) },
-        { user: "HighRoller", action: "just wagered $1,200", timestamp: new Date(Date.now() - 1000 * 60 * 15) }
-      ];
-      await Activity.insertMany(initialActivity);
-    }
-
-    setInterval(async () => {
-      try {
-        const fakeUsers = ['CryptoKing', 'BetMaster', 'Jackpot777', 'SpinWin', 'HighRoller', 'LuckyStar', 'PrismPlayer', 'Whale99', 'DiceGod', 'LimboKing'];
-        const fakeGames = ['dice', 'limbo', 'mines', 'dragon_tower', 'chicken', 'keno'];
-        
-        const randomUser = fakeUsers[Math.floor(Math.random() * fakeUsers.length)];
-        const randomGame = fakeGames[Math.floor(Math.random() * fakeGames.length)];
-        
-        const isWin = Math.random() > 0.6;
-        
-        let actionStr = '';
-        if (isWin) {
-          const winAmount = Math.floor(Math.random() * 500) + 50;
-          actionStr = `won ${winAmount} coins in ${randomGame}`;
-        } else {
-          const wagerAmount = Math.floor(Math.random() * 100) + 10;
-          actionStr = `wagered ${wagerAmount} coins in ${randomGame}`;
-        }
-
-        if (Math.random() > 0.9) {
-          const level = Math.floor(Math.random() * 50) + 2;
-          actionStr = `reached Level ${level}`;
-        }
-
-        await new Activity({ user: randomUser, action: actionStr, timestamp: new Date() }).save();
-        
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        await Activity.deleteMany({ timestamp: { $lt: yesterday } });
-        
-      } catch (e) {
-        console.error("Activity Simulator Error:", e.message);
-      }
-    }, 45000);
-
   } catch (err) {
     console.error("❌ Seeding Error:", err);
   }

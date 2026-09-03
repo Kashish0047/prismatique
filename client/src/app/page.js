@@ -29,7 +29,6 @@ export default function Home() {
     category: 'Offline',
     loading: true
   });
-  const [activities, setActivities] = useState([]);
   const [raffles, setRaffles] = useState([]);
   const [giveaways, setGiveaways] = useState([]);
 
@@ -48,13 +47,10 @@ export default function Home() {
 
   useEffect(() => {
     fetchStreamInfo();
-    fetchActivities();
     fetchRafflesAndGiveaways();
     const streamInterval = setInterval(fetchStreamInfo, 300000);
-    const activityInterval = setInterval(fetchActivities, 30000);
     return () => {
       clearInterval(streamInterval);
-      clearInterval(activityInterval);
     };
   }, []);
 
@@ -78,18 +74,6 @@ export default function Home() {
     }
   }, []);
 
-  const fetchActivities = async () => {
-    try {
-      const response = await fetch(`${API}/activity`);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const result = await response.json();
-      if (result.success) {
-        setActivities(result.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch activity:", err);
-    }
-  };
 
   const fetchStreamInfo = async () => {
     try {
@@ -297,28 +281,6 @@ export default function Home() {
                     <span className="stat-value">{streamInfo.loading ? '...' : streamInfo.category.toUpperCase()}</span>
                     <span className="stat-label">Category</span>
                   </div>
-                </div>
-              </div>
-              <div className="activity-card">
-                <h4>LATEST ACTIVITY</h4>
-                <div className="activity-list">
-                  {activities.length > 0 ? activities.map((activity) => (
-                    <div className="activity-item" key={activity.id}>
-                      <div className="activity-icon">
-                        {activity.action.includes('login') ? '👤' : 
-                         activity.action.includes('win') ? '🏆' : 
-                         activity.action.includes('wager') ? '💰' : '🎁'}
-                      </div>
-                      <div className="activity-text">
-                        <p><span className="activity-user">{activity.user}</span> {activity.action}</p>
-                        <span>{activity.time}</span>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="activity-item">
-                      <p className="loading-text">Loading activity...</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
