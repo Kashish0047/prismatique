@@ -380,7 +380,7 @@ export default function AdminDashboard({ onLogout }) {
                   <div className="admin-table-wrapper">
                     <table className="admin-table">
                       <thead>
-                        <tr><th>USER</th><th>SN POINTS</th><th>REGISTERED</th></tr>
+                        <tr><th>USER</th><th>KICK POINTS</th><th>REGISTERED</th></tr>
                       </thead>
                       <tbody>
                         {users.map(u => (
@@ -389,7 +389,7 @@ export default function AdminDashboard({ onLogout }) {
                               <img src={u.avatar} alt={u.username} className="small-avatar" />
                               <span>{u.username}</span>
                             </td>
-                            <td>{u.snPoints != null ? `🪙 ${u.snPoints.toLocaleString()}` : <span style={{ opacity: 0.4 }}>— not on StreamNeeds</span>}</td>
+                            <td>{u.snPoints != null ? `🪙 ${u.snPoints.toLocaleString()}` : <span style={{ opacity: 0.4 }}>— no Kick points</span>}</td>
                             <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : (u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A')}</td>
                           </tr>
                         ))}
@@ -601,10 +601,8 @@ export default function AdminDashboard({ onLogout }) {
                   <input placeholder="Wager column label (e.g. WAGER)" value={newLeaderboard.metricLabel} onChange={(e) => setNewLeaderboard({...newLeaderboard, metricLabel: e.target.value})} />
                   <input type="color" title="Tab accent colour" value={newLeaderboard.accentColor} onChange={(e) => setNewLeaderboard({...newLeaderboard, accentColor: e.target.value})} style={{ height: '50px', padding: '4px' }} />
                 </div>
-                <div className="form-row">
-                  <input type="number" placeholder="Show top N" value={newLeaderboard.limit} onChange={(e) => setNewLeaderboard({...newLeaderboard, limit: parseInt(e.target.value) || 20})} />
-                  <input type="number" placeholder="Sort order" value={newLeaderboard.order} onChange={(e) => setNewLeaderboard({...newLeaderboard, order: parseInt(e.target.value) || 0})} />
-                </div>
+                <label className="admin-field-label">Show top N players</label>
+                <input type="number" placeholder="Show top N" value={newLeaderboard.limit} onChange={(e) => setNewLeaderboard({...newLeaderboard, limit: parseInt(e.target.value) || 20})} />
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.active} onChange={(e) => setNewLeaderboard({...newLeaderboard, active: e.target.checked})} /> Active (visible on site)</label>
                 <label className="admin-check"><input type="checkbox" checked={newLeaderboard.useBaseline} onChange={(e) => setNewLeaderboard({...newLeaderboard, useBaseline: e.target.checked})} /> Per-period board (subtract points captured at each reset)</label>
                 <div className="modal-actions">
